@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDebouncedUpdate } from '../hooks/useDebouncedUpdate';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
@@ -16,23 +17,36 @@ import {
 } from '@remixicon/react';
 
 type SortKey = 'rating' | 'price' | 'status';
+type SortDir = 'asc' | 'desc';
 type ViewMode = 'big' | 'medium' | 'list';
 
 const STATUS_ORDER: Record<ProductStatus, number> = {
   purchased: 0, winner: 1, shortlisted: 2, considering: 3,
 };
 
-function sortProducts(products: Product[], key: SortKey): Product[] {
+const STATUS_LABELS: Record<ProductStatus, string> = {
+  purchased: 'Purchased', winner: 'Winners', shortlisted: 'Shortlisted', considering: 'Considering',
+};
+
+function sortProducts(products: Product[], key: SortKey, dir: SortDir): Product[] {
+  const mult = dir === 'asc' ? 1 : -1;
   return [...products].sort((a, b) => {
     if (key === 'rating') {
       if (!a.rating && !b.rating) return 0;
       if (!a.rating) return 1;
       if (!b.rating) return -1;
-      return b.rating - a.rating;
+      return (b.rating - a.rating) * mult;
     }
-    if (key === 'price') return a.price - b.price;
-    return (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+    if (key === 'price') return (a.price - b.price) * mult;
+    return ((STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)) * mult;
   });
+}
+
+function groupByStatus(products: Product[]): { status: ProductStatus; label: string; items: Product[] }[] {
+  const order: ProductStatus[] = ['purchased', 'winner', 'shortlisted', 'considering'];
+  return order
+    .map((s) => ({ status: s, label: STATUS_LABELS[s], items: products.filter((p) => p.status === s) }))
+    .filter((g) => g.items.length > 0);
 }
 
 const COLORS = ['#5b8db8', '#4f9a7e', '#c4883d', '#b06b7d', '#6b5eaa', '#bf6b4a'];
@@ -63,6 +77,7 @@ export function HomePage() {
     if (urlProductId && urlProductId !== selectedId) setSelectedId(urlProductId);
   }, [urlProductId]);
   const [sortBy, setSortBy] = useState<SortKey>('rating');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('medium');
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
@@ -78,21 +93,38 @@ export function HomePage() {
   const [adding, setAdding] = useState(false);
   const [scrapeWarning, setScrapeWarning] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showWinnersOnly, setShowWinnersOnly] = useState(false);
 
   // Add shop
   const [shopName, setShopName] = useState('');
   const [shopSortBy, setShopSortBy] = useState<'name' | 'domain' | 'products'>('name');
+
+  // Rescrape state
+  const [rescraping, setRescraping] = useState(false);
+  const [scrapePreview, setScrapePreview] = useState<{ title?: string; image_url?: string; price?: number; shop_name?: string } | null>(null);
   const [shopUrl, setShopUrl] = useState('');
 
   const activeCol = collections.find((c) => c.id === activeColId);
   const selected = products.find((p) => p.id === selectedId) ?? null;
+
+  // Debounced fields for the drawer so typing doesn't fire a save on every keystroke
+  const saveTitle = useCallback((v: string) => { if (selected) updateProduct(selected.id, { title: v }); }, [selected?.id]);
+  const saveNotes = useCallback((v: string) => { if (selected) updateProduct(selected.id, { notes: v }); }, [selected?.id]);
+  const savePrice = useCallback((v: string) => { if (selected) updateProduct(selected.id, { price: parseFloat(v) || 0 }); }, [selected?.id]);
+  const [dTitle, setDTitle] = useDebouncedUpdate(selected?.title ?? '', saveTitle);
+  const [dNotes, setDNotes] = useDebouncedUpdate(selected?.notes ?? '', saveNotes);
+  const [dPrice, setDPrice] = useDebouncedUpdate(String(selected?.price ?? ''), savePrice);
   const filtered = showArchived ? products : products.filter((p) => !p.archived);
-  const sorted = sortProducts(filtered, sortBy);
+  const sorted = sortProducts(filtered, sortBy, sortDir);
+  const statusGroups = sortBy === 'status' ? groupByStatus(showWinnersOnly ? sorted.filter((p) => p.status === 'winner' || p.status === 'purchased') : sorted) : [];
   const archivedCount = products.filter((p) => p.archived).length;
+  const winnersCount = products.filter((p) => (p.status === 'winner' || p.status === 'purchased') && !p.archived).length;
+  const displayed = showWinnersOnly ? sorted.filter((p) => p.status === 'winner' || p.status === 'purchased') : sorted;
   const compareProducts = sorted.filter((p) => compareIds.has(p.id)).sort((a, b) => a.price - b.price);
 
   function selectProduct(id: string | null) {
     setSelectedId(id);
+    setScrapePreview(null);
     if (activeCol) {
       navigate(id ? `/c/${activeCol.slug}/${id}` : `/c/${activeCol.slug}`, { replace: true });
     }
@@ -178,6 +210,43 @@ export function HomePage() {
     await createShop({ collection_id: activeColId, name: shopName.trim(), domain, url: shopUrl || undefined });
     setShopName('');
     setShopUrl('');
+  }
+
+  async function handleRescrape() {
+    if (!selected?.source_url || rescraping) return;
+    setRescraping(true);
+    setScrapePreview(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-url', {
+        body: { url: selected.source_url },
+      });
+      if (!error && data && !data.error) {
+        setScrapePreview(data);
+      } else {
+        setScrapeWarning(data?.error || 'Rescrape failed.');
+      }
+    } catch {
+      setScrapeWarning('Rescrape failed.');
+    }
+    setRescraping(false);
+  }
+
+  function applyScrapePreview() {
+    if (!selected || !scrapePreview) return;
+    const updates: Partial<Product> = {};
+    if (scrapePreview.title) updates.title = scrapePreview.title;
+    if (scrapePreview.image_url) updates.image_url = scrapePreview.image_url;
+    if (scrapePreview.price != null) {
+      updates.original_price = selected.price;
+      updates.price = scrapePreview.price;
+    }
+    if (scrapePreview.shop_name) updates.shop_name = scrapePreview.shop_name;
+    updateProduct(selected.id, updates);
+    setScrapePreview(null);
+  }
+
+  function dismissScrapePreview() {
+    setScrapePreview(null);
   }
 
   function toggleCompareId(id: string) {
@@ -319,8 +388,16 @@ export function HomePage() {
                   <div className="w-px h-5 bg-neutral-200 mx-3" />
                   <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mr-1">Sort</span>
                   {(['rating', 'price', 'status'] as SortKey[]).map((s) => (
-                    <button key={s} onClick={() => setSortBy(s)} className={`text-[11px] px-2.5 py-1 rounded capitalize transition-all ${sortBy === s ? 'bg-[#1c1e2a] text-white font-medium' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}>
+                    <button
+                      key={s}
+                      onClick={() => {
+                        if (sortBy === s) setSortDir(sortDir === 'desc' ? 'asc' : 'desc');
+                        else { setSortBy(s); setSortDir('desc'); }
+                      }}
+                      className={`text-[11px] px-2.5 py-1 rounded capitalize transition-all flex items-center gap-0.5 ${sortBy === s ? 'bg-[#1c1e2a] text-white font-medium' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
+                    >
                       {s === 'rating' ? 'Stars' : s}
+                      {sortBy === s && <span className="text-[9px] ml-0.5">{sortDir === 'desc' ? '↓' : '↑'}</span>}
                     </button>
                   ))}
                 </>
@@ -330,6 +407,11 @@ export function HomePage() {
 
               {tab === 'products' && !showCompare && (
                 <div className="flex items-center gap-3">
+                  {winnersCount > 0 && (
+                    <button onClick={() => setShowWinnersOnly(!showWinnersOnly)} className={`text-[11px] flex items-center gap-1 transition-all ${showWinnersOnly ? 'text-amber-600 font-medium' : 'text-neutral-400 hover:text-neutral-600'}`}>
+                      {showWinnersOnly ? 'Show all' : `Winners (${winnersCount})`}
+                    </button>
+                  )}
                   {archivedCount > 0 && (
                     <button onClick={() => setShowArchived(!showArchived)} className={`text-[11px] flex items-center gap-1 transition-all ${showArchived ? 'text-[#1c1e2a] font-medium' : 'text-neutral-400 hover:text-neutral-600'}`}>
                       <RiArchiveLine size={13} /> {showArchived ? 'Hide' : 'Show'} archived ({archivedCount})
@@ -354,12 +436,12 @@ export function HomePage() {
             <div className="flex flex-1 overflow-hidden">
               <div className="flex-1 overflow-y-auto p-6">
                 {/* Product grid/list */}
-                {tab === 'products' && !showCompare && viewMode !== 'list' && (
-                  <div className={viewMode === 'big' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'}>
-                    {sorted.map((p) => (
+                {tab === 'products' && !showCompare && viewMode !== 'list' && (() => {
+                  const gridCls = viewMode === 'big' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4';
+                  const renderCard = (p: Product) => (
                       <div
                         key={p.id}
-                        onClick={() => compareMode ? toggleCompareId(p.id) : selectProduct(p.id)}
+                        onClick={(e) => { if (e.shiftKey && p.source_url) { window.open(p.source_url, '_blank'); return; } compareMode ? toggleCompareId(p.id) : selectProduct(p.id); }}
                         className={`bg-white rounded overflow-hidden cursor-pointer relative transition-all duration-200 hover:-translate-y-0.5 group shadow-sm hover:shadow-md
                           ${p.archived ? 'opacity-50' : ''}
                           ${selectedId === p.id ? 'ring-2 ring-[#1c1e2a] shadow-lg' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
@@ -407,58 +489,124 @@ export function HomePage() {
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                  );
+                  if (sortBy === 'status') {
+                    const groups = sortDir === 'asc' ? [...statusGroups].reverse() : statusGroups;
+                    return (
+                      <div className="flex flex-col gap-6">
+                        {groups.map((g) => (
+                          <div key={g.status}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Badge status={g.status} showLabel />
+                              <span className="text-[11px] text-neutral-400">{g.items.length}</span>
+                              <div className="flex-1 h-px bg-neutral-200" />
+                            </div>
+                            <div className={gridCls}>{g.items.map(renderCard)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return <div className={gridCls}>{displayed.map(renderCard)}</div>;
+                })()}
 
                 {/* List view */}
-                {tab === 'products' && !showCompare && viewMode === 'list' && (
-                  <div className="flex flex-col gap-2">
-                    {sorted.map((p) => (
-                      <div
-                        key={p.id}
-                        onClick={() => compareMode ? toggleCompareId(p.id) : selectProduct(p.id)}
-                        className={`bg-white rounded overflow-hidden cursor-pointer flex items-center gap-4 shadow-sm hover:shadow-md transition-all
-                          ${p.archived ? 'opacity-50' : ''}
-                          ${selectedId === p.id ? 'ring-2 ring-[#1c1e2a]' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
-                          ${compareMode && compareIds.has(p.id) ? 'ring-2 ring-[#1c1e2a]' : ''}`}
-                      >
-                        {compareMode && (
-                          <div className={`ml-4 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${compareIds.has(p.id) ? 'bg-[#1c1e2a] text-white' : 'border border-neutral-300 text-transparent'}`}>
-                            <RiCheckLine size={12} />
-                          </div>
+                {tab === 'products' && !showCompare && viewMode === 'list' && (() => {
+                  const renderRow = (p: Product) => (
+                    <div
+                      key={p.id}
+                      onClick={(e) => { if (e.shiftKey && p.source_url) { window.open(p.source_url, '_blank'); return; } compareMode ? toggleCompareId(p.id) : selectProduct(p.id); }}
+                      className={`bg-white rounded overflow-hidden cursor-pointer flex items-center gap-4 shadow-sm hover:shadow-md transition-all
+                        ${p.archived ? 'opacity-50' : ''}
+                        ${selectedId === p.id ? 'ring-2 ring-[#1c1e2a]' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
+                        ${compareMode && compareIds.has(p.id) ? 'ring-2 ring-[#1c1e2a]' : ''}`}
+                    >
+                      {compareMode && (
+                        <div className={`ml-4 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${compareIds.has(p.id) ? 'bg-[#1c1e2a] text-white' : 'border border-neutral-300 text-transparent'}`}>
+                          <RiCheckLine size={12} />
+                        </div>
+                      )}
+                      <div className="w-16 h-16 bg-neutral-100 flex-shrink-0 overflow-hidden">
+                        {p.image_url ? <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" /> : (
+                          <div className="w-full h-full flex items-center justify-center"><RiImageLine size={20} className="text-neutral-300" /></div>
                         )}
-                        <div className="w-16 h-16 bg-neutral-100 flex-shrink-0 overflow-hidden">
-                          {p.image_url ? <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" /> : (
-                            <div className="w-full h-full flex items-center justify-center"><RiImageLine size={20} className="text-neutral-300" /></div>
-                          )}
-                        </div>
-                        <div className="flex-1 py-3 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className="text-[13px] font-medium text-[#1c1e2a] truncate font-serif">{p.title}</p>
-                            <Badge status={p.status as ProductStatus} showLabel />
-                          </div>
-                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">{p.shop_name}</p>
-                        </div>
-                        <div className="w-24 flex-shrink-0 flex justify-center">
-                          <StarRating rating={p.rating} size={12} onRate={(r) => updateProduct(p.id, { rating: r })} />
-                        </div>
-                        <div className="w-24 flex-shrink-0 text-right">
-                          <span className={`text-[15px] font-semibold ${p.archived ? 'text-neutral-400 line-through' : 'text-[#1c1e2a]'}`}>${Number(p.price).toLocaleString()}</span>
-                        </div>
-                        <div className="w-10 flex-shrink-0 flex justify-center">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); updateProduct(p.id, { archived: !p.archived }); }}
-                            title={p.archived ? 'Unarchive' : 'Archive'}
-                            className={`p-1 rounded hover:bg-neutral-100 transition-colors ${p.archived ? 'text-amber-500' : 'text-neutral-300 hover:text-neutral-500'}`}
-                          >
-                            <RiArchiveLine size={14} />
-                          </button>
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="flex-1 py-3 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-[13px] font-medium text-[#1c1e2a] truncate font-serif">{p.title}</p>
+                          {sortBy !== 'status' && <Badge status={p.status as ProductStatus} showLabel />}
+                        </div>
+                        <p className="text-[10px] text-neutral-400 uppercase tracking-wider">{p.shop_name}</p>
+                      </div>
+                      <div className="w-24 flex-shrink-0 flex justify-center">
+                        <StarRating rating={p.rating} size={12} onRate={(r) => updateProduct(p.id, { rating: r })} />
+                      </div>
+                      <div className="w-12 flex-shrink-0 text-center">
+                        <span className="text-xs text-neutral-400">&times;{p.quantity || 1}</span>
+                      </div>
+                      <div className="w-24 flex-shrink-0 text-right">
+                        <span className={`text-[15px] font-semibold ${p.archived ? 'text-neutral-400 line-through' : 'text-[#1c1e2a]'}`}>${Number(p.price).toLocaleString()}</span>
+                        {(p.quantity || 1) > 1 && (
+                          <p className="text-[10px] text-neutral-400">${(Number(p.price) * (p.quantity || 1)).toLocaleString()}</p>
+                        )}
+                      </div>
+                      <div className="w-10 flex-shrink-0 flex justify-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); updateProduct(p.id, { archived: !p.archived }); }}
+                          title={p.archived ? 'Unarchive' : 'Archive'}
+                          className={`p-1 rounded hover:bg-neutral-100 transition-colors ${p.archived ? 'text-amber-500' : 'text-neutral-300 hover:text-neutral-500'}`}
+                        >
+                          <RiArchiveLine size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+
+                  const renderTotal = (items: Product[], label: string) => (
+                    <div className="flex items-center gap-4 px-4 py-3 mt-1 bg-white rounded shadow-sm border-t-2 border-[#1c1e2a]">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-[#1c1e2a]">
+                          {label} &middot; {items.reduce((sum, p) => sum + (p.quantity || 1), 0)} items
+                        </p>
+                      </div>
+                      <div className="w-24 flex-shrink-0" />
+                      <div className="w-12 flex-shrink-0" />
+                      <div className="w-24 flex-shrink-0 text-right">
+                        <span className="text-[17px] font-bold text-[#1c1e2a]">
+                          ${items.reduce((sum, p) => sum + (Number(p.price) * (p.quantity || 1)), 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="w-10 flex-shrink-0" />
+                    </div>
+                  );
+
+                  if (sortBy === 'status') {
+                    const groups = sortDir === 'asc' ? [...statusGroups].reverse() : statusGroups;
+                    return (
+                      <div className="flex flex-col gap-5">
+                        {groups.map((g) => (
+                          <div key={g.status}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge status={g.status} showLabel />
+                              <span className="text-[11px] text-neutral-400">{g.items.length}</span>
+                              <div className="flex-1 h-px bg-neutral-200" />
+                              <span className="text-[11px] font-medium text-neutral-500">${g.items.reduce((sum, p) => sum + (Number(p.price) * (p.quantity || 1)), 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex flex-col gap-2">{g.items.map(renderRow)}</div>
+                          </div>
+                        ))}
+                        {displayed.length > 0 && renderTotal(displayed, showWinnersOnly ? 'Purchase total' : 'Total')}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-2">
+                      {displayed.map(renderRow)}
+                      {displayed.length > 0 && renderTotal(displayed, showWinnersOnly ? 'Purchase total' : 'Total')}
+                    </div>
+                  );
+                })()}
 
                 {/* Compare table */}
                 {tab === 'products' && showCompare && (
@@ -471,7 +619,7 @@ export function HomePage() {
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b border-neutral-100">
-                            {['#', '', 'Product', 'Price', 'Shop', 'Status', 'Rating', 'Pros', 'Cons'].map((h) => (
+                            {['#', '', 'Product', 'Price', 'Shop', 'Status', 'Rating'].map((h) => (
                               <th key={h} className="text-left py-3.5 px-4 text-[10px] text-neutral-400 font-medium uppercase tracking-wider">{h}</th>
                             ))}
                           </tr>
@@ -492,8 +640,6 @@ export function HomePage() {
                               <td className="py-4 px-4 text-neutral-500">{p.shop_name}</td>
                               <td className="py-4 px-4"><Badge status={p.status as ProductStatus} showLabel /></td>
                               <td className="py-4 px-4"><StarRating rating={p.rating} size={12} interactive={false} /></td>
-                              <td className="py-4 px-4 text-neutral-500 max-w-28">{p.pros.join(', ') || '--'}</td>
-                              <td className="py-4 px-4 text-neutral-500 max-w-28">{p.cons.join(', ') || '--'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -580,7 +726,7 @@ export function HomePage() {
 
               {/* ── Drawer ── */}
               {selected && !compareMode && tab === 'products' && (
-                <aside className="w-80 flex-shrink-0 bg-white border-l border-neutral-200/80 flex flex-col overflow-hidden">
+                <aside className="w-96 flex-shrink-0 bg-white border-l border-neutral-200/80 flex flex-col overflow-hidden">
                   <div
                     className="relative w-full aspect-[4/3] bg-neutral-100 flex-shrink-0 overflow-hidden group"
                     onPaste={(e) => {
@@ -630,7 +776,7 @@ export function HomePage() {
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5">
                     <div>
                       {selected.source_url ? (
                         <a href={selected.source_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-neutral-400 hover:text-[#1c1e2a] mb-1 font-medium uppercase tracking-wider flex items-center gap-1 group transition-colors">
@@ -641,108 +787,160 @@ export function HomePage() {
                         <p className="text-[10px] text-neutral-400 mb-1 font-medium uppercase tracking-wider">{selected.shop_name}</p>
                       )}
                       <input
-                        value={selected.title}
-                        onChange={(e) => updateProduct(selected.id, { title: e.target.value })}
+                        value={dTitle}
+                        onChange={(e) => setDTitle(e.target.value)}
                         className="text-base font-semibold text-[#1c1e2a] leading-snug font-serif w-full bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-neutral-400 focus:outline-none transition-colors pb-0.5"
                         placeholder="Product name"
                       />
                     </div>
 
-                    {/* Price */}
-                    <div className="bg-neutral-50 rounded p-3.5">
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="text-2xl font-bold text-[#1c1e2a]">$</span>
-                        <input
-                          type="number"
-                          value={selected.price || ''}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            updateProduct(selected.id, { price: val });
-                          }}
-                          className="text-2xl font-bold text-[#1c1e2a] bg-transparent w-28 border-b border-transparent hover:border-neutral-300 focus:border-neutral-400 focus:outline-none transition-colors"
-                          placeholder="0"
-                        />
+
+                    {/* Price + Quantity + Total — same row */}
+                    <div className="bg-neutral-50 rounded p-3.5 flex items-center">
+                      <div className="flex-1">
+                        <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1">Price</p>
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-lg font-bold text-[#1c1e2a]">$</span>
+                          <input
+                            type="number"
+                            value={dPrice}
+                            onChange={(e) => setDPrice(e.target.value)}
+                            className="text-lg font-bold text-[#1c1e2a] bg-transparent w-20 border-b border-transparent hover:border-neutral-300 focus:border-neutral-400 focus:outline-none transition-colors"
+                            placeholder="0"
+                          />
+                        </div>
+                        {selected.price < selected.original_price && (
+                          <p className="text-[11px] text-neutral-400 mt-0.5">Was ${Number(selected.original_price).toLocaleString()}</p>
+                        )}
                       </div>
-                      {selected.price < selected.original_price && (
-                        <p className="text-[11px] text-neutral-400">Was ${Number(selected.original_price).toLocaleString()} &middot; saved ${Number(selected.original_price - selected.price).toLocaleString()}</p>
-                      )}
+                      <div className="flex-1 flex justify-center">
+                        <div>
+                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1 text-center">Quantity</p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => updateProduct(selected.id, { quantity: Math.max(1, (selected.quantity || 1) - 1) })}
+                              className="w-6 h-6 rounded border border-neutral-200 flex items-center justify-center text-neutral-400 hover:text-neutral-600 text-xs"
+                            >-</button>
+                            <span className="text-xs font-semibold text-[#1c1e2a] w-5 text-center">{selected.quantity || 1}</span>
+                            <button
+                              onClick={() => updateProduct(selected.id, { quantity: (selected.quantity || 1) + 1 })}
+                              className="w-6 h-6 rounded border border-neutral-200 flex items-center justify-center text-neutral-400 hover:text-neutral-600 text-xs"
+                            >+</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1 text-right">
+                        <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1">Total</p>
+                        <span className="text-lg font-bold text-[#1c1e2a]">${(Number(selected.price) * (selected.quantity || 1)).toLocaleString()}</span>
+                      </div>
                     </div>
 
                     {/* Rating */}
                     <div>
-                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-3 font-medium">Your rating</p>
-                      <StarRating rating={selected.rating} size={18} onRate={(r) => updateProduct(selected.id, { rating: r })} />
-                      {!selected.rating && <p className="text-[11px] text-neutral-300 mt-1">Not rated yet</p>}
+                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1.5 font-medium">Rating</p>
+                      <StarRating rating={selected.rating} size={16} onRate={(r) => updateProduct(selected.id, { rating: r })} />
                     </div>
 
                     {/* Status */}
                     <div>
-                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-3 font-medium">Decision status</p>
+                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-2 font-medium">Status</p>
                       <StatusPicker value={selected.status as ProductStatus} onChange={(s) => updateProduct(selected.id, { status: s })} />
                     </div>
 
                     {/* Notes */}
                     <div>
-                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-3 font-medium">Notes</p>
+                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1.5 font-medium">Notes</p>
                       <textarea
-                        value={selected.notes}
-                        onChange={(e) => updateProduct(selected.id, { notes: e.target.value })}
+                        value={dNotes}
+                        onChange={(e) => setDNotes(e.target.value)}
                         placeholder="What do you think about this one?..."
-                        className="w-full text-xs border border-neutral-200 rounded p-3 bg-white resize-none focus:outline-none focus:border-neutral-400 leading-relaxed min-h-20"
-                        rows={3}
+                        className="w-full text-xs border border-neutral-200 rounded p-2.5 bg-white resize-none focus:outline-none focus:border-neutral-400 leading-relaxed min-h-16"
+                        rows={2}
                       />
                     </div>
 
-                    {/* Pros & Cons */}
-                    <div>
-                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-3 font-medium">Pros & Cons</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-emerald-50/60 rounded p-3">
-                          <p className="text-[11px] font-semibold text-emerald-600 mb-2">Pros</p>
-                          {selected.pros.map((pro, i) => (
-                            <div key={i} className="text-xs text-neutral-600 flex gap-1.5 mb-1.5"><span className="text-emerald-500">+</span>{pro}</div>
-                          ))}
-                          <button onClick={() => {
-                            const v = prompt('Add a pro:');
-                            if (v) updateProduct(selected.id, { pros: [...selected.pros, v] });
-                          }} className="text-[11px] text-neutral-400 border border-dashed border-neutral-300 rounded px-2.5 py-1.5 w-full text-left hover:border-emerald-300 hover:text-emerald-600 mt-1 flex items-center gap-1">
-                            <RiAddLine size={12} /> add
-                          </button>
-                        </div>
-                        <div className="bg-red-50/60 rounded p-3">
-                          <p className="text-[11px] font-semibold text-red-500 mb-2">Cons</p>
-                          {selected.cons.map((con, i) => (
-                            <div key={i} className="text-xs text-neutral-600 flex gap-1.5 mb-1.5"><span className="text-red-400">&minus;</span>{con}</div>
-                          ))}
-                          <button onClick={() => {
-                            const v = prompt('Add a con:');
-                            if (v) updateProduct(selected.id, { cons: [...selected.cons, v] });
-                          }} className="text-[11px] text-neutral-400 border border-dashed border-neutral-300 rounded px-2.5 py-1.5 w-full text-left hover:border-red-300 hover:text-red-500 mt-1 flex items-center gap-1">
-                            <RiAddLine size={12} /> add
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-3">
-                      {selected.source_url && selected.source_url !== '' && (
-                        <a href={selected.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-neutral-500 hover:text-[#1c1e2a] flex items-center gap-1.5 font-medium">
-                          <RiExternalLinkLine size={14} /> View on shop
-                        </a>
-                      )}
-                      <div className="flex-1" />
-                      <button onClick={() => { updateProduct(selected.id, { archived: !selected.archived }); selectProduct(null); }} className="text-xs text-neutral-400 hover:text-amber-600 flex items-center gap-1">
-                        <RiArchiveLine size={13} /> {selected.archived ? 'Unarchive' : 'Archive'}
+                  {/* Bottom action bar */}
+                  <div className="flex items-center justify-center gap-1 px-4 py-2.5 border-t border-neutral-200/80 flex-shrink-0">
+                    {selected.source_url && (
+                      <a href={selected.source_url} target="_blank" rel="noopener noreferrer" title="Open in shop" className="p-2 rounded text-neutral-400 hover:text-[#1c1e2a] hover:bg-neutral-100 transition-colors">
+                        <RiExternalLinkLine size={16} />
+                      </a>
+                    )}
+                    {selected.source_url && (
+                      <button onClick={handleRescrape} disabled={rescraping} title="Refresh from website" className="p-2 rounded text-neutral-400 hover:text-[#1c1e2a] hover:bg-neutral-100 transition-colors disabled:opacity-50">
+                        <RiRefreshLine size={16} className={rescraping ? 'animate-spin' : ''} />
                       </button>
-                      <button onClick={() => { removeProduct(selected.id); selectProduct(null); }} className="text-xs text-neutral-300 hover:text-red-500 flex items-center gap-1">
-                        <RiDeleteBinLine size={13} />
-                      </button>
-                    </div>
+                    )}
+                    <div className="w-px h-5 bg-neutral-200 mx-1" />
+                    <button onClick={() => { updateProduct(selected.id, { archived: !selected.archived }); selectProduct(null); }} title={selected.archived ? 'Unarchive' : 'Archive'} className="p-2 rounded text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                      <RiArchiveLine size={16} />
+                    </button>
+                    <button onClick={() => { removeProduct(selected.id); selectProduct(null); }} title="Delete permanently" className="p-2 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      <RiDeleteBinLine size={16} />
+                    </button>
                   </div>
                 </aside>
               )}
             </div>
+
+            {/* Scrape preview popup */}
+            {scrapePreview && selected && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={dismissScrapePreview}>
+                <div className="bg-white rounded shadow-xl w-96 max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                  {/* Preview image */}
+                  {scrapePreview.image_url && (
+                    <div className="w-full aspect-[4/3] bg-neutral-100 overflow-hidden relative">
+                      <img src={scrapePreview.image_url} alt="" className="w-full h-full object-cover" />
+                      {scrapePreview.image_url !== selected.image_url && (
+                        <span className="absolute top-3 left-3 text-[10px] bg-sky-500 text-white px-2 py-0.5 rounded-full font-medium">New image</span>
+                      )}
+                    </div>
+                  )}
+                  {/* Preview body */}
+                  <div className="p-5 flex flex-col gap-3">
+                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">
+                      {scrapePreview.shop_name || selected.shop_name}
+                    </p>
+                    <div>
+                      <p className="text-base font-semibold text-[#1c1e2a] font-serif leading-snug">
+                        {scrapePreview.title || selected.title}
+                      </p>
+                      {scrapePreview.title && scrapePreview.title !== selected.title && (
+                        <p className="text-[11px] text-neutral-400 mt-0.5 line-through">{selected.title}</p>
+                      )}
+                    </div>
+                    {scrapePreview.price != null && (
+                      <div className="bg-neutral-50 rounded p-3">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-[#1c1e2a]">${scrapePreview.price.toLocaleString()}</span>
+                          {scrapePreview.price !== Number(selected.price) && (
+                            <span className={`text-xs font-semibold ${scrapePreview.price < Number(selected.price) ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {scrapePreview.price < Number(selected.price)
+                                ? `↓$${(Number(selected.price) - scrapePreview.price).toLocaleString()}`
+                                : `↑$${(scrapePreview.price - Number(selected.price)).toLocaleString()}`}
+                            </span>
+                          )}
+                        </div>
+                        {scrapePreview.price !== Number(selected.price) && (
+                          <p className="text-[11px] text-neutral-400 mt-0.5">Was ${Number(selected.price).toLocaleString()}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Preview actions */}
+                  <div className="flex gap-2 px-5 pb-5">
+                    <button onClick={applyScrapePreview} className="flex-1 text-xs font-medium text-white bg-[#1c1e2a] px-4 py-2.5 rounded hover:bg-[#2a2d3d] transition-colors">
+                      Update product
+                    </button>
+                    <button onClick={dismissScrapePreview} className="text-xs text-neutral-400 hover:text-neutral-600 px-4 py-2.5 transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* URL input bar */}
             {tab === 'products' && (

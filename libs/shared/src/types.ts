@@ -24,9 +24,8 @@ export interface Product {
   image_url: string | null;
   status: ProductStatus;
   notes: string;
-  pros: string[];
-  cons: string[];
   rating: number;
+  quantity: number;
   archived: boolean;
   price_checked_at: string | null;
   created_at: string;
