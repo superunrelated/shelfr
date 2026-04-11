@@ -129,6 +129,67 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Extension promo */}
+      <section className="px-6 md:px-12 py-16 max-w-6xl mx-auto">
+        <div className="bg-[#1c1e2a] rounded-lg p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-4">
+              <RiChromeLine size={20} className="text-amber-400" />
+              <p className="text-[10px] text-neutral-400 uppercase tracking-[0.2em] font-medium">
+                Chrome Extension
+              </p>
+            </div>
+            <h2
+              className="text-2xl md:text-3xl font-bold text-white leading-tight mb-3"
+              style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+            >
+              Save products without
+              <br />
+              leaving the page
+            </h2>
+            <p className="text-sm text-neutral-400 leading-relaxed mb-6 max-w-md">
+              Browse any store, click the Shelfr icon, and save the product to
+              your collection in one click. Title, image, and price are
+              extracted automatically.
+            </p>
+            <a
+              href="https://chromewebstore.google.com/detail/shelfr/aacpljgijhpobmfdjbhdipjjjakndaod"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-white text-[#1c1e2a] text-xs font-medium hover:bg-neutral-100 transition-colors"
+            >
+              <RiChromeLine size={16} />
+              Add to Chrome
+            </a>
+          </div>
+          <div className="w-full md:w-64 flex-shrink-0">
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center">
+                  <RiBookmarkLine size={12} className="text-white" />
+                </div>
+                <span
+                  className="text-sm font-semibold text-white"
+                  style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+                >
+                  shelf<span className="text-amber-400">r</span>
+                </span>
+              </div>
+              <div className="space-y-2">
+                <div className="h-2 bg-white/10 rounded w-3/4" />
+                <div className="h-2 bg-white/10 rounded w-1/2" />
+                <div className="h-7 bg-white/5 border border-white/10 rounded mt-3" />
+                <div className="h-8 bg-white rounded mt-3 flex items-center justify-center">
+                  <span className="text-[10px] font-medium text-[#1c1e2a]">
+                    Add to shelf
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="px-6 md:px-12 py-8 max-w-6xl mx-auto border-t border-neutral-200">
         <div className="flex items-center justify-between">

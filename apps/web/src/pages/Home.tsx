@@ -735,10 +735,12 @@ export function HomePage() {
             !window.confirm(
               'Are you sure? This will permanently delete your account and all your data.'
             )
-          )
+          ) {
             return;
-          if (!window.confirm('This cannot be undone. Delete everything?'))
+          }
+          if (!window.confirm('This cannot be undone. Delete everything?')) {
             return;
+          }
           await supabase.rpc('delete_own_account');
           await supabase.auth.signOut();
           navigate('/');
@@ -958,7 +960,7 @@ export function HomePage() {
             )}
 
             {/* Content */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
               <div className="flex-1 overflow-y-auto p-3 md:p-6">
                 {/* Loading */}
                 {productsLoading && tab === 'products' && (

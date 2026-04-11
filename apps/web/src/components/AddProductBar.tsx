@@ -34,7 +34,7 @@ export function AddProductBar({
   onManualCancel,
 }: AddProductBarProps) {
   return (
-    <div className="bg-white border-t border-neutral-200/80 px-4 md:px-6 py-3 md:py-3.5 flex flex-col gap-2 flex-shrink-0">
+    <div className="bg-white border-t border-neutral-200/80 px-4 md:px-6 py-3 md:py-3.5 flex flex-col gap-2 flex-shrink-0 sticky bottom-0 z-20 pb-[max(env(safe-area-inset-bottom,0px),0.75rem)]">
       {warning && (
         <div
           className="flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 px-3 py-2 rounded"
