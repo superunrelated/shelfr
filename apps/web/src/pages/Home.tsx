@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useProducts } from '../hooks/useProducts';
 import { useShops } from '../hooks/useShops';
-import { Badge, StarRating, EmptyState } from '@shelfr/ui';
+import { Badge, StarRating, EmptyState, SkeletonCard } from '@shelfr/ui';
 import { supabase, cleanUrl, extractDomain } from '@shelfr/shared';
 import type { Product, ProductStatus } from '@shelfr/shared';
 import { Sidebar } from '../components/Sidebar';
@@ -780,7 +780,9 @@ export function HomePage() {
                     </div>
                   ) : (
                     <div className={gridCls}>
-                      {adding && <SkeletonCard viewMode={viewMode} />}
+                      {adding && (
+                        <SkeletonCard compact={viewMode === 'compact'} />
+                      )}
                       {displayed.map(renderCard)}
                     </div>
                   ))}
@@ -924,24 +926,6 @@ export function HomePage() {
             )}
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-function SkeletonCard({ viewMode }: { viewMode: ViewMode }) {
-  const isCompact = viewMode === 'compact';
-  return (
-    <div className="bg-white rounded overflow-hidden shadow-sm animate-pulse">
-      <div
-        className={`w-full bg-neutral-200 ${isCompact ? 'aspect-square' : 'aspect-[4/3]'}`}
-      />
-      <div className={isCompact ? 'p-2' : 'p-5'}>
-        {!isCompact && (
-          <div className="h-2.5 bg-neutral-200 rounded w-16 mb-2" />
-        )}
-        <div className="h-3 bg-neutral-200 rounded w-3/4 mb-2" />
-        <div className="h-3.5 bg-neutral-200 rounded w-12" />
       </div>
     </div>
   );

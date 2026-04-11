@@ -1,5 +1,5 @@
-import { RiMenuLine, RiBookmarkLine, RiImageLine } from '@remixicon/react';
-import { EmptyState } from '@shelfr/ui';
+import { RiMenuLine, RiBookmarkLine } from '@remixicon/react';
+import { EmptyState, CollectionCard } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
 
 interface CollectionsGridProps {
@@ -38,37 +38,13 @@ export function CollectionsGrid({
       ) : (
         <div className="p-3 md:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {collections.map((c) => (
-            <button
+            <CollectionCard
               key={c.id}
+              name={c.name}
+              color={c.color}
+              imageUrl={collectionCovers[c.id]}
               onClick={() => onSwitchCollection(c.id)}
-              className="bg-white rounded shadow-sm border border-neutral-200/80 overflow-hidden text-left hover:shadow-md hover:-translate-y-0.5 transition-all group"
-            >
-              <div className="aspect-[4/3] bg-neutral-100 relative overflow-hidden">
-                {collectionCovers[c.id] ? (
-                  <img
-                    src={collectionCovers[c.id]}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <RiImageLine size={32} className="text-neutral-200" />
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ background: c.color }}
-                  />
-                  <p className="text-[14px] font-semibold text-[#1c1e2a] font-serif truncate">
-                    {c.name}
-                  </p>
-                </div>
-              </div>
-            </button>
+            />
           ))}
         </div>
       )}

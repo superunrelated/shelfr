@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { RiStore2Line, RiExternalLinkLine } from '@remixicon/react';
-import { Button } from '@shelfr/ui';
 import type { Shop } from '@shelfr/shared';
+import { ShopAddForm } from './ShopAddForm';
 
 interface ShopWithCount extends Shop {
   _count: number;
@@ -94,42 +93,6 @@ export function ShopsTab({
         </table>
       </div>
       <ShopAddForm onAdd={onAddShop} />
-    </div>
-  );
-}
-
-function ShopAddForm({
-  onAdd,
-}: {
-  onAdd: (name: string, url: string) => void;
-}) {
-  const [name, setName] = useState('');
-  const [url, setUrl] = useState('');
-  return (
-    <div className="flex gap-2.5 mt-5">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Shop name"
-        className="flex-1 text-xs px-4 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400"
-      />
-      <input
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="URL (optional)"
-        className="flex-[1.5] text-xs px-4 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400"
-      />
-      <Button
-        onClick={() => {
-          if (name.trim()) {
-            onAdd(name.trim(), url);
-            setName('');
-            setUrl('');
-          }
-        }}
-      >
-        Add
-      </Button>
     </div>
   );
 }
