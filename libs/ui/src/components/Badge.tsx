@@ -39,14 +39,13 @@ const STATUS_STYLES: Record<ProductStatus, StatusStyle> = {
 interface BadgeProps {
   status: ProductStatus;
   showLabel?: boolean;
-  className?: string;
 }
 
-export function Badge({ status, showLabel = false, className = '' }: BadgeProps) {
+export function Badge({ status, showLabel = false }: BadgeProps) {
   const { label, cls, Icon } = STATUS_STYLES[status];
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full font-medium ${cls} ${className}`}
+      className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full font-medium ${cls}`}
     >
       <Icon size={11} />
       {(showLabel || status === 'winner' || status === 'purchased') && label}

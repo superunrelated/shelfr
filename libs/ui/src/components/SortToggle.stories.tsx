@@ -2,7 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { SortToggle, type SortKey } from './SortToggle';
 
-const meta: Meta<typeof SortToggle> = { title: 'Components/SortToggle', component: SortToggle };
+const meta: Meta<typeof SortToggle> = {
+  title: 'Components/SortToggle',
+  component: SortToggle,
+};
 export default meta;
 type Story = StoryObj<typeof SortToggle>;
 

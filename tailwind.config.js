@@ -4,6 +4,8 @@ const { join } = require('path');
 module.exports = {
   content: [
     join(__dirname, 'apps/web/src/**/*.{ts,tsx,html}'),
+    join(__dirname, 'apps/extension/src/**/*.{ts,tsx,html}'),
+    join(__dirname, 'apps/extension/popup.html'),
     join(__dirname, 'libs/ui/src/**/*.{ts,tsx,html}'),
   ],
   theme: {

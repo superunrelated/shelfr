@@ -93,12 +93,12 @@ export function AuthPage() {
               </p>
             )}
 
-            <Button type="submit" disabled={loading} className="w-full mt-1">
+            <Button type="submit" disabled={loading} fullWidth>
               {loading
                 ? 'Please wait...'
                 : mode === 'signin'
-                ? 'Sign in'
-                : 'Create account'}
+                  ? 'Sign in'
+                  : 'Create account'}
             </Button>
           </form>
         </div>

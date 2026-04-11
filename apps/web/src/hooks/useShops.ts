@@ -5,6 +5,7 @@ import type { Shop } from '@shelfr/shared';
 export function useShops(collectionId: string | null) {
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!collectionId) {
@@ -13,11 +14,17 @@ export function useShops(collectionId: string | null) {
       return;
     }
     setLoading(true);
-    const { data } = await supabase
+    setError(null);
+    const { data, error: err } = await supabase
       .from('shops')
       .select('*')
       .eq('collection_id', collectionId)
       .order('created_at', { ascending: true });
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+      return;
+    }
     setShops(data ?? []);
     setLoading(false);
   }, [collectionId]);
@@ -26,17 +33,28 @@ export function useShops(collectionId: string | null) {
     fetch();
   }, [fetch]);
 
-  async function create(shop: { collection_id: string; name: string; domain: string; url?: string }) {
-    const { data } = await supabase.from('shops').insert(shop).select().single();
+  async function create(shop: {
+    collection_id: string;
+    name: string;
+    domain: string;
+    url?: string;
+  }) {
+    const { data, error: err } = await supabase
+      .from('shops')
+      .insert(shop)
+      .select()
+      .single();
+    if (err) {
+      setError(err.message);
+      return null;
+    }
     if (data) setShops((prev) => [...prev, data]);
     return data;
   }
 
-  async function ensureShopExists(collectionId: string, name: string, domain: string) {
-    const existing = shops.find((s) => s.domain === domain && s.collection_id === collectionId);
-    if (existing) return existing;
-    return create({ collection_id: collectionId, name, domain });
+  function clearError() {
+    setError(null);
   }
 
-  return { shops, loading, create, ensureShopExists, refetch: fetch };
+  return { shops, loading, error, create, refetch: fetch, clearError };
 }

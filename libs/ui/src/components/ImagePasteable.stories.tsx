@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { ImagePasteable } from './ImagePasteable';
 const fn = () => () => {};
 
-const meta: Meta<typeof ImagePasteable> = { title: 'Components/ImagePasteable', component: ImagePasteable };
+const meta: Meta<typeof ImagePasteable> = {
+  title: 'Components/ImagePasteable',
+  component: ImagePasteable,
+};
 export default meta;
 type Story = StoryObj<typeof ImagePasteable>;
 
@@ -25,8 +28,14 @@ export const Interactive: Story = {
     const [src, setSrc] = useState<string | null>(null);
     return (
       <div className="w-80">
-        <ImagePasteable src={src} onImageChange={setSrc} onClose={() => setSrc(null)} />
-        <p className="text-xs text-neutral-400 mt-2">Paste an image URL or copy-paste an image from your clipboard</p>
+        <ImagePasteable
+          src={src}
+          onImageChange={setSrc}
+          onClose={() => setSrc(null)}
+        />
+        <p className="text-xs text-neutral-400 mt-2">
+          Paste an image URL or copy-paste an image from your clipboard
+        </p>
       </div>
     );
   },

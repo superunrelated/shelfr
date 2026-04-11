@@ -2,7 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ProConList } from './ProConList';
 const fn = () => () => {};
 
-const meta: Meta<typeof ProConList> = { title: 'Components/ProConList', component: ProConList };
+const meta: Meta<typeof ProConList> = {
+  title: 'Components/ProConList',
+  component: ProConList,
+};
 export default meta;
 type Story = StoryObj<typeof ProConList>;
 

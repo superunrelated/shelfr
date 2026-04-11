@@ -14,7 +14,9 @@ const options: { key: SortKey; label: string }[] = [
 export function SortToggle({ value, onChange }: SortToggleProps) {
   return (
     <div className="flex items-center gap-1">
-      <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mr-1">Sort</span>
+      <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mr-1">
+        Sort
+      </span>
       {options.map((s) => (
         <button
           key={s.key}

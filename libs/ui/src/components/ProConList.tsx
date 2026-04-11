@@ -7,14 +7,20 @@ interface ProConListProps {
   onAddCon?: () => void;
 }
 
-export function ProConList({ pros, cons, onAddPro, onAddCon }: ProConListProps) {
+export function ProConList({
+  pros,
+  cons,
+  onAddPro,
+  onAddCon,
+}: ProConListProps) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="bg-emerald-50/60 rounded p-3">
         <p className="text-[11px] font-semibold text-emerald-600 mb-2">Pros</p>
         {pros.map((pro, i) => (
           <div key={i} className="text-xs text-neutral-600 flex gap-1.5 mb-1.5">
-            <span className="text-emerald-500">+</span>{pro}
+            <span className="text-emerald-500">+</span>
+            {pro}
           </div>
         ))}
         {onAddPro && (
@@ -30,7 +36,8 @@ export function ProConList({ pros, cons, onAddPro, onAddCon }: ProConListProps) 
         <p className="text-[11px] font-semibold text-red-500 mb-2">Cons</p>
         {cons.map((con, i) => (
           <div key={i} className="text-xs text-neutral-600 flex gap-1.5 mb-1.5">
-            <span className="text-red-400">&minus;</span>{con}
+            <span className="text-red-400">&minus;</span>
+            {con}
           </div>
         ))}
         {onAddCon && (

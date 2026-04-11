@@ -2,7 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { ViewToggle, type ViewMode } from './ViewToggle';
 
-const meta: Meta<typeof ViewToggle> = { title: 'Components/ViewToggle', component: ViewToggle };
+const meta: Meta<typeof ViewToggle> = {
+  title: 'Components/ViewToggle',
+  component: ViewToggle,
+};
 export default meta;
 type Story = StoryObj<typeof ViewToggle>;
 

@@ -27,6 +27,7 @@ export function StarRating({
           <button
             key={star}
             type="button"
+            aria-label={`Rate ${star} out of 5${star === rating ? ' (current)' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               if (interactive && onRate) onRate(star === rating ? 0 : star);

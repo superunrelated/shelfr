@@ -8,8 +8,13 @@ const meta: Meta<typeof Button> = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['primary', 'secondary', 'ghost'],
+      options: ['primary', 'secondary', 'ghost', 'ghost-muted'],
     },
+    size: {
+      control: 'select',
+      options: ['sm', 'md'],
+    },
+    fullWidth: { control: 'boolean' },
     disabled: { control: 'boolean' },
   },
 };
@@ -56,11 +61,32 @@ export const AllVariants: Story = {
         <Button variant="primary">Primary</Button>
         <Button variant="secondary">Secondary</Button>
         <Button variant="ghost">Ghost</Button>
+        <Button variant="ghost-muted">Ghost Muted</Button>
       </div>
       <div className="flex items-center gap-3">
-        <Button variant="primary" disabled>Primary</Button>
-        <Button variant="secondary" disabled>Secondary</Button>
-        <Button variant="ghost" disabled>Ghost</Button>
+        <Button variant="primary" disabled>
+          Primary
+        </Button>
+        <Button variant="secondary" disabled>
+          Secondary
+        </Button>
+        <Button variant="ghost" disabled>
+          Ghost
+        </Button>
+        <Button variant="ghost-muted" disabled>
+          Ghost Muted
+        </Button>
+      </div>
+      <div className="flex items-center gap-3">
+        <Button variant="primary" size="sm">
+          Small
+        </Button>
+        <Button variant="secondary" size="sm">
+          Small
+        </Button>
+        <Button variant="ghost" size="sm">
+          Small
+        </Button>
       </div>
     </div>
   ),

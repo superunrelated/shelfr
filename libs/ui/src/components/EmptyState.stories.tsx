@@ -1,9 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { EmptyState } from './EmptyState';
 import { Button } from './Button';
-import { RiBookmarkLine, RiShoppingBag3Line, RiStore2Line } from '@remixicon/react';
+import {
+  RiBookmarkLine,
+  RiShoppingBag3Line,
+  RiStore2Line,
+} from '@remixicon/react';
 
-const meta: Meta<typeof EmptyState> = { title: 'Components/EmptyState', component: EmptyState };
+const meta: Meta<typeof EmptyState> = {
+  title: 'Components/EmptyState',
+  component: EmptyState,
+};
 export default meta;
 type Story = StoryObj<typeof EmptyState>;
 

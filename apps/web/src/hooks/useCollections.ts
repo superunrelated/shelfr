@@ -7,13 +7,20 @@ export function useCollections() {
   const { user } = useAuth();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    setError(null);
+    const { data, error: err } = await supabase
       .from('collections')
       .select('*')
       .order('created_at', { ascending: true });
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+      return;
+    }
     setCollections(data ?? []);
     setLoading(false);
   }, [user]);
@@ -24,20 +31,53 @@ export function useCollections() {
 
   async function create(name: string, color: string) {
     if (!user) return null;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const { data, error } = await supabase
+    // Handle slug collisions by appending a suffix
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const existingSlugs = new Set(collections.map((c) => c.slug));
+    let slug = baseSlug;
+    let i = 2;
+    while (existingSlugs.has(slug)) {
+      slug = `${baseSlug}-${i++}`;
+    }
+    const { data, error: err } = await supabase
       .from('collections')
       .insert({ user_id: user.id, name, slug, color })
       .select()
       .single();
+    if (err) {
+      setError(err.message);
+      return null;
+    }
     if (data) setCollections((prev) => [...prev, data]);
     return data;
   }
 
   async function remove(id: string) {
-    await supabase.from('collections').delete().eq('id', id);
+    const { error: err } = await supabase
+      .from('collections')
+      .delete()
+      .eq('id', id);
+    if (err) {
+      setError(err.message);
+      return;
+    }
     setCollections((prev) => prev.filter((c) => c.id !== id));
   }
 
-  return { collections, loading, create, remove, refetch: fetch };
+  function clearError() {
+    setError(null);
+  }
+
+  return {
+    collections,
+    loading,
+    error,
+    create,
+    remove,
+    refetch: fetch,
+    clearError,
+  };
 }

@@ -1,4 +1,8 @@
-export type ProductStatus = 'considering' | 'shortlisted' | 'winner' | 'purchased';
+export type ProductStatus =
+  | 'considering'
+  | 'shortlisted'
+  | 'winner'
+  | 'purchased';
 
 export interface Collection {
   id: string;

@@ -38,7 +38,9 @@ export const Interactive: Story = {
       <div className="flex flex-col gap-3">
         <StarRating rating={rating} size={20} onRate={setRating} />
         <p className="text-xs text-neutral-400">
-          {rating === 0 ? 'Click a star to rate' : `Rated ${rating}/5 — click same star to unrate`}
+          {rating === 0
+            ? 'Click a star to rate'
+            : `Rated ${rating}/5 — click same star to unrate`}
         </p>
       </div>
     );
