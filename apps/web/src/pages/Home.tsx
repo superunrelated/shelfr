@@ -720,8 +720,9 @@ export function HomePage() {
         onSwitchCollection={switchCollection}
         onCreateCollection={handleCreateCollection}
         onDeleteCollection={(id) => {
-          if (!window.confirm('Delete this collection and all its products?'))
+          if (!window.confirm('Delete this collection and all its products?')) {
             return;
+          }
           removeCollection(id);
           if (activeColId === id) {
             setActiveColId(null);
@@ -729,6 +730,19 @@ export function HomePage() {
           }
         }}
         onSignOut={signOut}
+        onDeleteAccount={async () => {
+          if (
+            !window.confirm(
+              'Are you sure? This will permanently delete your account and all your data.'
+            )
+          )
+            return;
+          if (!window.confirm('This cannot be undone. Delete everything?'))
+            return;
+          await supabase.rpc('delete_own_account');
+          await supabase.auth.signOut();
+          navigate('/');
+        }}
         onClose={() => setSidebarOpen(false)}
       />
 

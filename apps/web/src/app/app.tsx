@@ -50,7 +50,7 @@ export default function App() {
           </PublicOnlyRoute>
         }
       />
-      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPage />} />
       <Route
         path="/c"
         element={

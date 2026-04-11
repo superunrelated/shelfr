@@ -13,6 +13,7 @@ interface SidebarProps {
   onCreateCollection: (name: string) => void;
   onDeleteCollection: (id: string) => void;
   onSignOut: () => void;
+  onDeleteAccount: () => void;
   onClose: () => void;
 }
 
@@ -25,6 +26,7 @@ export function Sidebar({
   onCreateCollection,
   onDeleteCollection,
   onSignOut,
+  onDeleteAccount,
   onClose,
 }: SidebarProps) {
   const [showNewCol, setShowNewCol] = useState(false);
@@ -137,12 +139,21 @@ export function Sidebar({
           <Button variant="ghost-muted" fullWidth onClick={onSignOut}>
             <RiLogoutBoxRLine size={14} /> Sign out
           </Button>
-          <Link
-            to="/privacy"
-            className="block text-center text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors mt-3"
-          >
-            Privacy policy
-          </Link>
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <Link
+              to="/privacy"
+              className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors"
+            >
+              Privacy
+            </Link>
+            <span className="text-neutral-700 text-[11px]">&middot;</span>
+            <button
+              onClick={onDeleteAccount}
+              className="text-[11px] text-neutral-600 hover:text-red-400 transition-colors"
+            >
+              Delete account
+            </button>
+          </div>
         </div>
       </aside>
     </>
