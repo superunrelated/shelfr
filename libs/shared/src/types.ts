@@ -44,12 +44,3 @@ export interface Shop {
   url: string | null;
   created_at: string;
 }
-
-export interface CollectionMember {
-  id: string;
-  collection_id: string;
-  user_id: string;
-  role: 'viewer' | 'editor';
-  invited_by: string;
-  created_at: string;
-}

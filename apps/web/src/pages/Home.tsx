@@ -4,93 +4,31 @@ import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useProducts } from '../hooks/useProducts';
 import { useShops } from '../hooks/useShops';
-import { Button, Badge, StarRating, EmptyState } from '@shelfr/ui';
+import { Badge, StarRating, EmptyState } from '@shelfr/ui';
 import { supabase, cleanUrl, extractDomain } from '@shelfr/shared';
 import type { Product, ProductStatus } from '@shelfr/shared';
 import { Sidebar } from '../components/Sidebar';
 import { ProductDrawer } from '../components/ProductDrawer';
 import { ScrapePreviewModal } from '../components/ScrapePreviewModal';
 import { AddProductBar } from '../components/AddProductBar';
+import { CollectionsGrid } from '../components/CollectionsGrid';
+import { CollectionHeader } from '../components/CollectionHeader';
+import { CollectionToolbar } from '../components/CollectionToolbar';
+import { CompareTable } from '../components/CompareTable';
+import { ShopsTab } from '../components/ShopsTab';
 import {
-  RiBookmarkLine,
-  RiMenuLine,
-  RiExternalLinkLine,
   RiCheckLine,
-  RiArrowLeftLine,
   RiShoppingBag3Line,
-  RiScalesLine,
-  RiStore2Line,
   RiArrowDownSLine,
-  RiGridFill,
-  RiListCheck,
   RiImageLine,
   RiArchiveLine,
-  RiLayoutGridLine,
 } from '@remixicon/react';
-
-// ── Types ──
-
-type SortKey = 'rating' | 'price' | 'status';
-type SortDir = 'asc' | 'desc';
-type ViewMode = 'big' | 'compact' | 'list';
-
-const STATUS_ORDER: Record<ProductStatus, number> = {
-  purchased: 0,
-  winner: 1,
-  shortlisted: 2,
-  considering: 3,
-};
-const STATUS_LABELS: Record<ProductStatus, string> = {
-  purchased: 'Purchased',
-  winner: 'Winners',
-  shortlisted: 'Shortlisted',
-  considering: 'Considering',
-};
-const COLORS = [
-  '#5b8db8',
-  '#4f9a7e',
-  '#c4883d',
-  '#b06b7d',
-  '#6b5eaa',
-  '#bf6b4a',
-];
-
-function sortProducts(
-  products: Product[],
-  key: SortKey,
-  dir: SortDir
-): Product[] {
-  const mult = dir === 'asc' ? 1 : -1;
-  return [...products].sort((a, b) => {
-    if (key === 'rating') {
-      if (!a.rating && !b.rating) return 0;
-      if (!a.rating) return 1;
-      if (!b.rating) return -1;
-      return (b.rating - a.rating) * mult;
-    }
-    if (key === 'price') return (a.price - b.price) * mult;
-    return (
-      ((STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)) * mult
-    );
-  });
-}
-
-function groupByStatus(products: Product[], dir: SortDir) {
-  const order: ProductStatus[] = [
-    'purchased',
-    'winner',
-    'shortlisted',
-    'considering',
-  ];
-  const groups = order
-    .map((s) => ({
-      status: s,
-      label: STATUS_LABELS[s],
-      items: products.filter((p) => p.status === s),
-    }))
-    .filter((g) => g.items.length > 0);
-  return dir === 'asc' ? groups.reverse() : groups;
-}
+import {
+  sortProducts,
+  groupByStatus,
+  COLLECTION_COLORS,
+} from '../utils/productSort';
+import type { SortKey, SortDir, ViewMode } from '../utils/productSort';
 
 // ── Main page ──
 
@@ -117,7 +55,7 @@ export function HomePage() {
   } = useProducts(activeColId);
   const { shops, create: createShop } = useShops(activeColId);
 
-  // Collection cover images (latest product image per collection)
+  // Collection cover images
   const [collectionCovers, setCollectionCovers] = useState<
     Record<string, string>
   >({});
@@ -179,7 +117,7 @@ export function HomePage() {
     'name'
   );
 
-  // ── Derived data (memoized) ──
+  // ── Derived data ──
   const activeCol = useMemo(
     () => collections.find((c) => c.id === activeColId),
     [collections, activeColId]
@@ -262,7 +200,6 @@ export function HomePage() {
     }
   }, [urlProductId]);
 
-  // Re-select product after products load (for direct URL navigation)
   useEffect(() => {
     if (urlProductId && !selected && products.length > 0) {
       const p = products.find((p) => p.id === urlProductId);
@@ -294,7 +231,8 @@ export function HomePage() {
   }
 
   async function handleCreateCollection(name: string) {
-    const color = COLORS[collections.length % COLORS.length];
+    const color =
+      COLLECTION_COLORS[collections.length % COLLECTION_COLORS.length];
     const col = await createCollection(name, color);
     if (col) {
       setActiveColId(col.id);
@@ -309,7 +247,6 @@ export function HomePage() {
     const cleaned = cleanUrl(urlInput.trim());
     const domain = extractDomain(cleaned);
 
-    // Duplicate detection
     const existing = products.find((p) => p.source_url === cleaned);
     if (existing) {
       setScrapeWarning(
@@ -344,7 +281,6 @@ export function HomePage() {
     }
 
     if (scrapeFailed) {
-      // Show manual entry form instead of creating a blank product
       setScrapeWarning(
         'Could not fetch product details. Fill them in manually.'
       );
@@ -488,7 +424,7 @@ export function HomePage() {
     [compareMode, activeCol]
   );
 
-  // ── Render card (grid) ──
+  // ── Render card ──
   const renderCard = useCallback(
     (p: Product) => {
       const isCompact = viewMode === 'compact';
@@ -524,7 +460,7 @@ export function HomePage() {
             </button>
           )}
           <div
-            className={`w-full bg-neutral-100 relative overflow-hidden ${isCompact ? 'aspect-square' : viewMode === 'big' ? 'aspect-[4/3]' : 'aspect-[4/5]'}`}
+            className={`w-full bg-neutral-100 relative overflow-hidden ${isCompact ? 'aspect-square' : 'aspect-[4/3]'}`}
           >
             {p.image_url ? (
               <img
@@ -536,7 +472,7 @@ export function HomePage() {
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <RiImageLine
-                  size={isCompact ? 20 : viewMode === 'big' ? 48 : 36}
+                  size={isCompact ? 20 : 48}
                   className="text-neutral-300"
                 />
               </div>
@@ -556,22 +492,20 @@ export function HomePage() {
               </div>
             )}
           </div>
-          <div
-            className={isCompact ? 'p-2' : viewMode === 'big' ? 'p-5' : 'p-4'}
-          >
+          <div className={isCompact ? 'p-2' : 'p-5'}>
             {!isCompact && (
               <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1">
                 {p.shop_name}
               </p>
             )}
             <p
-              className={`font-medium leading-snug font-serif ${p.archived ? 'text-neutral-400 line-through' : 'text-[#1c1e2a]'} ${isCompact ? 'text-[11px] line-clamp-1 mb-1' : `${viewMode === 'big' ? 'text-[15px]' : 'text-[13px]'} line-clamp-2 mb-2.5`}`}
+              className={`font-medium leading-snug font-serif ${p.archived ? 'text-neutral-400 line-through' : 'text-[#1c1e2a]'} ${isCompact ? 'text-[11px] line-clamp-1 mb-1' : 'text-[15px] line-clamp-2 mb-2.5'}`}
             >
               {p.title}
             </p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span
-                className={`font-semibold ${p.archived ? 'text-neutral-400' : 'text-[#1c1e2a]'} ${isCompact ? 'text-[12px]' : viewMode === 'big' ? 'text-[17px]' : 'text-[15px]'}`}
+                className={`font-semibold ${p.archived ? 'text-neutral-400' : 'text-[#1c1e2a]'} ${isCompact ? 'text-[12px]' : 'text-[17px]'}`}
               >
                 ${Number(p.price).toLocaleString()}
               </span>
@@ -680,7 +614,6 @@ export function HomePage() {
     [compareMode, compareIds, selectedId, sortBy, handleCardClick]
   );
 
-  // ── Total row ──
   const TotalRow = ({ items, label }: { items: Product[]; label: string }) => (
     <div className="flex items-center gap-4 mt-1 bg-white rounded shadow-sm border-t-2 border-[#1c1e2a]">
       <div className="w-16 flex-shrink-0" />
@@ -750,200 +683,53 @@ export function HomePage() {
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {!activeCol ? (
-          <div className="flex-1 overflow-y-auto">
-            <header className="bg-white border-b border-neutral-200/80 px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-4 flex-shrink-0">
-              <button
-                className="md:hidden p-1.5 rounded text-neutral-400 hover:bg-neutral-100"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Open menu"
-              >
-                <RiMenuLine size={20} />
-              </button>
-              <h1 className="text-[18px] font-semibold text-[#1c1e2a] tracking-tight font-serif">
-                Collections
-              </h1>
-            </header>
-            {collections.length === 0 ? (
-              <EmptyState
-                icon={RiBookmarkLine}
-                title="No collections yet"
-                description="Create a collection from the sidebar to start tracking products."
-              />
-            ) : (
-              <div className="p-3 md:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {collections.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => switchCollection(c.id)}
-                    className="bg-white rounded shadow-sm border border-neutral-200/80 overflow-hidden text-left hover:shadow-md hover:-translate-y-0.5 transition-all group"
-                  >
-                    <div className="aspect-[4/3] bg-neutral-100 relative overflow-hidden">
-                      {collectionCovers[c.id] ? (
-                        <img
-                          src={collectionCovers[c.id]}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <RiImageLine size={32} className="text-neutral-200" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ background: c.color }}
-                        />
-                        <p className="text-[14px] font-semibold text-[#1c1e2a] font-serif truncate">
-                          {c.name}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <CollectionsGrid
+            collections={collections}
+            collectionCovers={collectionCovers}
+            onSwitchCollection={switchCollection}
+            onOpenSidebar={() => setSidebarOpen(true)}
+          />
         ) : (
           <>
-            {/* Topbar */}
-            <header className="bg-white border-b border-neutral-200/80 px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-4 flex-shrink-0">
-              <button
-                className="md:hidden p-1.5 rounded text-neutral-400 hover:bg-neutral-100"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Open menu"
-              >
-                <RiMenuLine size={20} />
-              </button>
-              <h1 className="flex-1 text-[18px] font-semibold text-[#1c1e2a] tracking-tight truncate font-serif">
-                {activeCol.name}
-              </h1>
-              {!compareMode ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setCompareMode(true);
-                    setSelectedId(null);
-                    setCompareIds(new Set());
-                    setShowCompare(false);
-                  }}
-                >
-                  <RiScalesLine size={14} /> Compare
-                </Button>
-              ) : (
-                <>
-                  <span className="text-xs text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
-                    {compareIds.size} selected
-                  </span>
-                  <Button
-                    disabled={compareIds.size < 2}
-                    onClick={() => setShowCompare(true)}
-                  >
-                    Compare now
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setCompareMode(false);
-                      setCompareIds(new Set());
-                      setShowCompare(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </>
-              )}
-            </header>
+            <CollectionHeader
+              collection={activeCol}
+              compareMode={compareMode}
+              compareCount={compareIds.size}
+              onOpenSidebar={() => setSidebarOpen(true)}
+              onStartCompare={() => {
+                setCompareMode(true);
+                setSelectedId(null);
+                setCompareIds(new Set());
+                setShowCompare(false);
+              }}
+              onShowCompare={() => setShowCompare(true)}
+              onCancelCompare={() => {
+                setCompareMode(false);
+                setCompareIds(new Set());
+                setShowCompare(false);
+              }}
+            />
 
-            {/* Toolbar */}
-            <div className="bg-white border-b border-neutral-200/80 px-4 md:px-6 flex items-center gap-1 flex-shrink-0 overflow-x-auto scrollbar-hide">
-              {[
-                {
-                  key: 'products' as const,
-                  label: 'Products',
-                  Icon: RiShoppingBag3Line,
-                },
-                { key: 'shops' as const, label: 'Shops', Icon: RiStore2Line },
-              ].map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => {
-                    setTab(t.key);
-                    if (t.key === 'shops') setSelectedId(null);
-                  }}
-                  className={`px-4 py-3 text-xs border-b-2 -mb-px transition-all flex items-center gap-1.5 ${tab === t.key ? 'border-[#1c1e2a] text-[#1c1e2a] font-medium' : 'border-transparent text-neutral-400 hover:text-neutral-600'}`}
-                >
-                  <t.Icon size={14} /> {t.label}
-                </button>
-              ))}
-              {tab === 'products' && !showCompare && (
-                <>
-                  <div className="w-px h-5 bg-neutral-200 mx-3" />
-                  <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mr-1">
-                    Sort
-                  </span>
-                  {(['rating', 'price', 'status'] as SortKey[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => handleSortClick(s)}
-                      className={`text-[11px] px-2.5 py-1 rounded capitalize transition-all flex items-center gap-0.5 ${sortBy === s ? 'bg-[#1c1e2a] text-white font-medium' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
-                    >
-                      {s === 'rating' ? 'Stars' : s}
-                      {sortBy === s && (
-                        <span className="text-[9px] ml-0.5">
-                          {sortDir === 'desc' ? '↓' : '↑'}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </>
-              )}
-              <div className="flex-1" />
-              {tab === 'products' && !showCompare && (
-                <div className="flex items-center gap-3">
-                  {winnersCount > 0 && (
-                    <button
-                      onClick={() => setShowWinnersOnly(!showWinnersOnly)}
-                      className={`text-[11px] flex items-center gap-1 transition-all ${showWinnersOnly ? 'text-amber-600 font-medium' : 'text-neutral-400 hover:text-neutral-600'}`}
-                    >
-                      {showWinnersOnly
-                        ? 'Show all'
-                        : `Winners (${winnersCount})`}
-                    </button>
-                  )}
-                  {archivedCount > 0 && (
-                    <button
-                      onClick={() => setShowArchived(!showArchived)}
-                      className={`text-[11px] flex items-center gap-1 transition-all ${showArchived ? 'text-[#1c1e2a] font-medium' : 'text-neutral-400 hover:text-neutral-600'}`}
-                    >
-                      <RiArchiveLine size={13} />{' '}
-                      {showArchived ? 'Hide' : 'Show'} archived ({archivedCount}
-                      )
-                    </button>
-                  )}
-                  <div className="flex items-center border border-neutral-200 rounded overflow-hidden">
-                    {[
-                      { key: 'big' as ViewMode, Icon: RiLayoutGridLine },
-                      { key: 'compact' as ViewMode, Icon: RiGridFill },
-                      { key: 'list' as ViewMode, Icon: RiListCheck },
-                    ].map((v) => (
-                      <button
-                        key={v.key}
-                        onClick={() => setViewMode(v.key)}
-                        className={`p-1.5 transition-all ${viewMode === v.key ? 'bg-[#1c1e2a] text-white' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
-                      >
-                        <v.Icon size={14} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <CollectionToolbar
+              tab={tab}
+              onTabChange={(t) => {
+                setTab(t);
+                if (t === 'shops') setSelectedId(null);
+              }}
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSortClick={handleSortClick}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              showCompare={showCompare}
+              showArchived={showArchived}
+              onToggleArchived={() => setShowArchived(!showArchived)}
+              archivedCount={archivedCount}
+              showWinnersOnly={showWinnersOnly}
+              onToggleWinners={() => setShowWinnersOnly(!showWinnersOnly)}
+              winnersCount={winnersCount}
+            />
 
-            {/* Error banner */}
             {productsError && (
               <div
                 className="bg-red-50 px-6 py-2 text-xs text-red-600 flex items-center gap-2"
@@ -962,7 +748,6 @@ export function HomePage() {
             {/* Content */}
             <div className="flex flex-1 min-h-0 overflow-hidden">
               <div className="flex-1 overflow-y-auto p-3 md:p-6">
-                {/* Loading */}
                 {productsLoading && tab === 'products' && (
                   <div className="flex items-center justify-center py-20">
                     <p className="text-xs text-neutral-400">
@@ -1052,200 +837,23 @@ export function HomePage() {
 
                 {/* Compare table */}
                 {tab === 'products' && showCompare && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6">
-                      <button
-                        onClick={() => setShowCompare(false)}
-                        className="text-xs text-neutral-400 hover:text-neutral-600 flex items-center gap-1"
-                      >
-                        <RiArrowLeftLine size={14} /> Back
-                      </button>
-                      <h2 className="text-[15px] font-semibold text-[#1c1e2a] font-serif">
-                        Comparing {compareProducts.length} products
-                      </h2>
-                    </div>
-                    <div className="overflow-x-auto bg-white rounded shadow-sm">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-neutral-100">
-                            {[
-                              '#',
-                              '',
-                              'Product',
-                              'Price',
-                              'Shop',
-                              'Status',
-                              'Rating',
-                              '',
-                            ].map((h) => (
-                              <th
-                                key={h}
-                                className="text-left py-3.5 px-4 text-[10px] text-neutral-400 font-medium uppercase tracking-wider"
-                              >
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {compareProducts.map((p, i) => (
-                            <tr
-                              key={p.id}
-                              className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50"
-                            >
-                              <td className="py-4 px-4">
-                                <span
-                                  className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-semibold ${i === 0 ? 'bg-amber-50 text-amber-700' : 'bg-neutral-100 text-neutral-400'}`}
-                                >
-                                  {i + 1}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="w-10 h-10 rounded bg-neutral-100 overflow-hidden">
-                                  {p.image_url ? (
-                                    <img
-                                      src={p.image_url}
-                                      alt={p.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <RiImageLine
-                                        size={16}
-                                        className="text-neutral-300"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-4 px-4 font-medium text-[#1c1e2a] font-serif max-w-32">
-                                {p.title}
-                              </td>
-                              <td className="py-4 px-4 font-semibold text-[#1c1e2a]">
-                                ${Number(p.price).toLocaleString()}
-                              </td>
-                              <td className="py-4 px-4 text-neutral-500">
-                                {p.shop_name}
-                              </td>
-                              <td className="py-4 px-4">
-                                <Badge
-                                  status={p.status as ProductStatus}
-                                  showLabel
-                                />
-                              </td>
-                              <td className="py-4 px-4">
-                                <StarRating
-                                  rating={p.rating}
-                                  size={12}
-                                  interactive={false}
-                                />
-                              </td>
-                              <td className="py-4 px-4">
-                                {p.status !== 'winner' ? (
-                                  <button
-                                    onClick={() =>
-                                      updateProduct(p.id, { status: 'winner' })
-                                    }
-                                    className="text-[11px] text-amber-600 hover:text-amber-700 font-medium whitespace-nowrap"
-                                  >
-                                    Pick winner
-                                  </button>
-                                ) : (
-                                  <span className="text-[11px] text-amber-500 font-medium">
-                                    Winner
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <CompareTable
+                    products={compareProducts}
+                    onBack={() => setShowCompare(false)}
+                    onPickWinner={(id) =>
+                      updateProduct(id, { status: 'winner' })
+                    }
+                  />
                 )}
 
                 {/* Shops tab */}
                 {tab === 'shops' && (
-                  <div>
-                    <p className="text-xs text-neutral-400 mb-5">
-                      Shops discovered for this collection. This list keeps
-                      growing even when products are removed.
-                    </p>
-                    <div className="bg-white rounded shadow-sm overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-neutral-100">
-                            {[
-                              { key: 'name' as const, label: 'Shop' },
-                              { key: 'domain' as const, label: 'Domain' },
-                              { key: 'products' as const, label: 'Products' },
-                            ].map((col) => (
-                              <th
-                                key={col.key}
-                                onClick={() => setShopSortBy(col.key)}
-                                className={`text-left py-3.5 px-5 text-[10px] font-medium uppercase tracking-wider cursor-pointer transition-colors ${shopSortBy === col.key ? 'text-[#1c1e2a]' : 'text-neutral-400 hover:text-neutral-600'}`}
-                              >
-                                {col.label}
-                                {shopSortBy === col.key ? ' ↓' : ''}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedShops.map((s) => (
-                            <tr
-                              key={s.id}
-                              className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50"
-                            >
-                              <td className="py-3.5 px-5 font-medium text-[#1c1e2a] flex items-center gap-2.5">
-                                <RiStore2Line
-                                  size={15}
-                                  className="text-neutral-400"
-                                />{' '}
-                                {s.name}
-                              </td>
-                              <td className="py-3.5 px-5">
-                                {s.domain ? (
-                                  <a
-                                    href={`https://${s.domain}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-neutral-400 hover:text-[#1c1e2a] flex items-center gap-1.5 group"
-                                  >
-                                    {s.domain}{' '}
-                                    <RiExternalLinkLine
-                                      size={12}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                    />
-                                  </a>
-                                ) : (
-                                  <span className="text-neutral-300">--</span>
-                                )}
-                              </td>
-                              <td className="py-3.5 px-5 text-neutral-500">
-                                {s._count > 0 ? (
-                                  `${s._count} product${s._count !== 1 ? 's' : ''}`
-                                ) : (
-                                  <span className="text-neutral-300">--</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                          {shops.length === 0 && (
-                            <tr>
-                              <td
-                                colSpan={3}
-                                className="py-8 text-center text-neutral-400"
-                              >
-                                No shops yet.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    <ShopAddForm onAdd={handleAddShop} />
-                  </div>
+                  <ShopsTab
+                    shops={sortedShops}
+                    shopSortBy={shopSortBy}
+                    onShopSortChange={setShopSortBy}
+                    onAddShop={handleAddShop}
+                  />
                 )}
 
                 {/* Empty products */}
@@ -1285,7 +893,6 @@ export function HomePage() {
               )}
             </div>
 
-            {/* Scrape preview modal */}
             {scrapePreview && selected && (
               <ScrapePreviewModal
                 preview={scrapePreview}
@@ -1298,7 +905,6 @@ export function HomePage() {
               />
             )}
 
-            {/* URL input bar */}
             {tab === 'products' && (
               <AddProductBar
                 urlInput={urlInput}
@@ -1328,52 +934,15 @@ function SkeletonCard({ viewMode }: { viewMode: ViewMode }) {
   return (
     <div className="bg-white rounded overflow-hidden shadow-sm animate-pulse">
       <div
-        className={`w-full bg-neutral-200 ${isCompact ? 'aspect-square' : viewMode === 'big' ? 'aspect-[4/3]' : 'aspect-[4/5]'}`}
+        className={`w-full bg-neutral-200 ${isCompact ? 'aspect-square' : 'aspect-[4/3]'}`}
       />
-      <div className={isCompact ? 'p-2' : viewMode === 'big' ? 'p-5' : 'p-4'}>
+      <div className={isCompact ? 'p-2' : 'p-5'}>
         {!isCompact && (
           <div className="h-2.5 bg-neutral-200 rounded w-16 mb-2" />
         )}
         <div className="h-3 bg-neutral-200 rounded w-3/4 mb-2" />
         <div className="h-3.5 bg-neutral-200 rounded w-12" />
       </div>
-    </div>
-  );
-}
-
-// ── Small inline component ──
-function ShopAddForm({
-  onAdd,
-}: {
-  onAdd: (name: string, url: string) => void;
-}) {
-  const [name, setName] = useState('');
-  const [url, setUrl] = useState('');
-  return (
-    <div className="flex gap-2.5 mt-5">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Shop name"
-        className="flex-1 text-xs px-4 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400"
-      />
-      <input
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="URL (optional)"
-        className="flex-[1.5] text-xs px-4 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400"
-      />
-      <Button
-        onClick={() => {
-          if (name.trim()) {
-            onAdd(name.trim(), url);
-            setName('');
-            setUrl('');
-          }
-        }}
-      >
-        Add
-      </Button>
     </div>
   );
 }
