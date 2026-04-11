@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { RiBookmarkLine } from '@remixicon/react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@shelfr/ui';
@@ -126,6 +126,12 @@ export function AuthPage() {
             </>
           )}
         </p>
+        <Link
+          to="/privacy"
+          className="text-[11px] text-neutral-300 hover:text-neutral-500 transition-colors text-center mt-6 block"
+        >
+          Privacy policy
+        </Link>
       </div>
     </div>
   );

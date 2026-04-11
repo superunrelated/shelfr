@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { RiAddLine, RiLogoutBoxRLine, RiDeleteBinLine } from '@remixicon/react';
 import { Button, Logo, Avatar } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
@@ -136,6 +137,12 @@ export function Sidebar({
           <Button variant="ghost-muted" fullWidth onClick={onSignOut}>
             <RiLogoutBoxRLine size={14} /> Sign out
           </Button>
+          <Link
+            to="/privacy"
+            className="block text-center text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors mt-3"
+          >
+            Privacy policy
+          </Link>
         </div>
       </aside>
     </>
