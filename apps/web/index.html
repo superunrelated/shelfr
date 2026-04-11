@@ -3,12 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <title>Shelfr</title>
-    <base href="/" />
+    <base href="/shelfr/" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/shelfr/logo.svg" />
     <link rel="stylesheet" href="/src/styles.css" />
+    <script>
+      // GitHub Pages SPA redirect handler
+      (function () {
+        var redirect = new URLSearchParams(window.location.search).get('redirect');
+        if (redirect) {
+          history.replaceState(null, '', decodeURIComponent(redirect));
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

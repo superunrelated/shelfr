@@ -12,10 +12,11 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') ?? '';
+  const allowed =
+    ALLOWED_ORIGINS.includes(origin) ||
+    origin.startsWith('chrome-extension://');
   return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin)
-      ? origin
-      : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers':
       'authorization, x-client-info, apikey, content-type',
   };
@@ -50,10 +51,12 @@ function isUnsafeUrl(urlStr: string): string | null {
   const parts = host.split('.').map(Number);
   if (parts.length === 4 && parts.every((n) => !isNaN(n))) {
     if (parts[0] === 10) return 'Private IP addresses are not allowed';
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) {
       return 'Private IP addresses are not allowed';
-    if (parts[0] === 192 && parts[1] === 168)
+    }
+    if (parts[0] === 192 && parts[1] === 168) {
       return 'Private IP addresses are not allowed';
+    }
   }
   return null;
 }
@@ -226,10 +229,15 @@ function findImage(obj: unknown): string | null {
     if (
       Array.isArray(record['image']) &&
       typeof record['image'][0] === 'string'
-    )
+    ) {
       return record['image'][0];
-    if (typeof record['url'] === 'string' && record['@type'] === 'ImageObject')
+    }
+    if (
+      typeof record['url'] === 'string' &&
+      record['@type'] === 'ImageObject'
+    ) {
       return record['url'];
+    }
     if (record['image']) return findImage(record['image']);
   }
   if (typeof record['image'] === 'string') return record['image'];
@@ -391,8 +399,9 @@ serve(async (req) => {
         console.log(
           `[image] ${imgUrl} -> status=${resp.status} type=${resp.headers.get('content-type')}`
         );
-        if (resp.ok && resp.headers.get('content-type')?.startsWith('image'))
+        if (resp.ok && resp.headers.get('content-type')?.startsWith('image')) {
           return resp;
+        }
         return null;
       } catch (e) {
         console.warn(

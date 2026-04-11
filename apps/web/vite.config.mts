@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 
 export default defineConfig(() => ({
+  base: '/shelfr/',
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/web',
   server: {

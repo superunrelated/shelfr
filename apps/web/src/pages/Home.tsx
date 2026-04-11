@@ -131,6 +131,12 @@ export function HomePage() {
   const [urlInput, setUrlInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [scrapeWarning, setScrapeWarning] = useState('');
+  const [manualEntry, setManualEntry] = useState<{
+    url: string;
+    title: string;
+    price: string;
+    imageUrl: string;
+  } | null>(null);
 
   // Rescrape
   const [rescraping, setRescraping] = useState(false);
@@ -275,6 +281,16 @@ export function HomePage() {
     setScrapeWarning('');
     const cleaned = cleanUrl(urlInput.trim());
     const domain = extractDomain(cleaned);
+
+    // Duplicate detection
+    const existing = products.find((p) => p.source_url === cleaned);
+    if (existing) {
+      setScrapeWarning(
+        `This URL is already saved in this collection as "${existing.title}".`
+      );
+      setAdding(false);
+      return;
+    }
     let baseUrl = '';
     try {
       baseUrl = new URL(cleaned).origin;
@@ -289,21 +305,25 @@ export function HomePage() {
       shop_name?: string;
       error?: string;
     } = {};
+    let scrapeFailed = false;
     try {
       const { data, error } = await supabase.functions.invoke('scrape-url', {
         body: { url: cleaned },
       });
       if (!error && data && !data.error) scraped = data;
-      else {
-        setScrapeWarning(
-          data?.error ||
-            'Could not fetch product details. Fill them in manually.'
-        );
-      }
+      else scrapeFailed = true;
     } catch {
+      scrapeFailed = true;
+    }
+
+    if (scrapeFailed) {
+      // Show manual entry form instead of creating a blank product
       setScrapeWarning(
         'Could not fetch product details. Fill them in manually.'
       );
+      setManualEntry({ url: cleaned, title: '', price: '', imageUrl: '' });
+      setAdding(false);
+      return;
     }
 
     const shopDisplayName = scraped.shop_name || domain;
@@ -333,6 +353,43 @@ export function HomePage() {
     setAdding(false);
   }
 
+  async function handleManualSubmit() {
+    if (!manualEntry || !activeColId || !user) return;
+    const domain = extractDomain(manualEntry.url);
+    let baseUrl = '';
+    try {
+      baseUrl = new URL(manualEntry.url).origin;
+    } catch {
+      /* */
+    }
+
+    if (!shops.find((s) => s.domain === domain)) {
+      await createShop({
+        collection_id: activeColId,
+        name: domain,
+        domain,
+        url: baseUrl || undefined,
+      });
+    }
+
+    await createProduct({
+      collection_id: activeColId,
+      user_id: user.id,
+      added_by: user.id,
+      title: manualEntry.title || 'New product',
+      source_url: manualEntry.url,
+      image_url: manualEntry.imageUrl || null,
+      price: parseFloat(manualEntry.price) || 0,
+      original_price: parseFloat(manualEntry.price) || 0,
+      shop_name: domain,
+      shop_domain: domain,
+      status: 'considering',
+    });
+    setManualEntry(null);
+    setUrlInput('');
+    setScrapeWarning('');
+  }
+
   async function handleRescrape() {
     if (!selected?.source_url || rescraping) return;
     setRescraping(true);
@@ -359,6 +416,7 @@ export function HomePage() {
       updates.price = scrapePreview.price;
     }
     if (scrapePreview.shop_name) updates.shop_name = scrapePreview.shop_name;
+    updates.price_checked_at = new Date().toISOString();
     updateProduct(selected.id, updates);
     setScrapePreview(null);
   }
@@ -650,7 +708,7 @@ export function HomePage() {
         ) : (
           <>
             {/* Topbar */}
-            <header className="bg-white border-b border-neutral-200/80 px-6 h-16 flex items-center gap-4 flex-shrink-0">
+            <header className="bg-white border-b border-neutral-200/80 px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-4 flex-shrink-0">
               <button
                 className="md:hidden p-1.5 rounded text-neutral-400 hover:bg-neutral-100"
                 onClick={() => setSidebarOpen(true)}
@@ -699,7 +757,7 @@ export function HomePage() {
             </header>
 
             {/* Toolbar */}
-            <div className="bg-white border-b border-neutral-200/80 px-6 flex items-center gap-1 flex-shrink-0">
+            <div className="bg-white border-b border-neutral-200/80 px-4 md:px-6 flex items-center gap-1 flex-shrink-0 overflow-x-auto scrollbar-hide">
               {[
                 {
                   key: 'products' as const,
@@ -802,7 +860,7 @@ export function HomePage() {
 
             {/* Content */}
             <div className="flex flex-1 overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-3 md:p-6">
                 {/* Loading */}
                 {productsLoading && tab === 'products' && (
                   <div className="flex items-center justify-center py-20">
@@ -835,7 +893,10 @@ export function HomePage() {
                       ))}
                     </div>
                   ) : (
-                    <div className={gridCls}>{displayed.map(renderCard)}</div>
+                    <div className={gridCls}>
+                      {adding && <SkeletonCard viewMode={viewMode} />}
+                      {displayed.map(renderCard)}
+                    </div>
                   ))}
 
                 {/* List view */}
@@ -914,6 +975,7 @@ export function HomePage() {
                               'Shop',
                               'Status',
                               'Rating',
+                              '',
                             ].map((h) => (
                               <th
                                 key={h}
@@ -976,6 +1038,22 @@ export function HomePage() {
                                   size={12}
                                   interactive={false}
                                 />
+                              </td>
+                              <td className="py-4 px-4">
+                                {p.status !== 'winner' ? (
+                                  <button
+                                    onClick={() =>
+                                      updateProduct(p.id, { status: 'winner' })
+                                    }
+                                    className="text-[11px] text-amber-600 hover:text-amber-700 font-medium whitespace-nowrap"
+                                  >
+                                    Pick winner
+                                  </button>
+                                ) : (
+                                  <span className="text-[11px] text-amber-500 font-medium">
+                                    Winner
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1128,10 +1206,35 @@ export function HomePage() {
                 adding={adding}
                 warning={scrapeWarning}
                 onDismissWarning={() => setScrapeWarning('')}
+                manualEntry={manualEntry}
+                onManualChange={setManualEntry}
+                onManualSubmit={handleManualSubmit}
+                onManualCancel={() => {
+                  setManualEntry(null);
+                  setScrapeWarning('');
+                }}
               />
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SkeletonCard({ viewMode }: { viewMode: ViewMode }) {
+  const isCompact = viewMode === 'compact';
+  return (
+    <div className="bg-white rounded overflow-hidden shadow-sm animate-pulse">
+      <div
+        className={`w-full bg-neutral-200 ${isCompact ? 'aspect-square' : viewMode === 'big' ? 'aspect-[4/3]' : 'aspect-[4/5]'}`}
+      />
+      <div className={isCompact ? 'p-2' : viewMode === 'big' ? 'p-5' : 'p-4'}>
+        {!isCompact && (
+          <div className="h-2.5 bg-neutral-200 rounded w-16 mb-2" />
+        )}
+        <div className="h-3 bg-neutral-200 rounded w-3/4 mb-2" />
+        <div className="h-3.5 bg-neutral-200 rounded w-12" />
       </div>
     </div>
   );

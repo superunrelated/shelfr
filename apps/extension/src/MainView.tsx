@@ -34,7 +34,6 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     fetchCollections();
   }, [fetchCollections]);
 
-  // Restore remembered collection
   useEffect(() => {
     if (collections.length === 0) return;
     getSelectedCollection().then((savedId) => {
@@ -46,7 +45,6 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     });
   }, [collections]);
 
-  // Get current tab info
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
@@ -71,7 +69,6 @@ export function MainView({ userId, onLogout }: MainViewProps) {
       const url = cleanUrl(tabInfo.url);
       const domain = extractDomain(url);
 
-      // Try the scrape edge function for richer metadata
       let title = tabInfo.title;
       let imageUrl: string | null = null;
       let price: number | null = null;
@@ -80,11 +77,9 @@ export function MainView({ userId, onLogout }: MainViewProps) {
       try {
         const { data: scrapeData } = await supabase.functions.invoke(
           'scrape-url',
-          {
-            body: { url },
-          }
+          { body: { url } }
         );
-        if (scrapeData) {
+        if (scrapeData && !scrapeData.error) {
           title = scrapeData.title || title;
           imageUrl = scrapeData.image_url || null;
           price = scrapeData.price || null;
@@ -114,7 +109,6 @@ export function MainView({ userId, onLogout }: MainViewProps) {
 
       if (error) throw error;
 
-      // Upsert shop
       await supabase
         .from('shops')
         .upsert(
@@ -140,42 +134,59 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     tabInfo?.url?.startsWith('chrome-extension://');
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
-        <h1 className="text-lg font-bold text-stone-900 tracking-tight">
-          shelfr
-        </h1>
+    <div className="flex flex-col min-h-[420px]">
+      {/* Header — dark sidebar style */}
+      <div className="flex items-center justify-between px-4 py-3 bg-[#1c1e2a]">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded bg-white/10 flex items-center justify-center">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-3.5 h-3.5 text-white fill-current"
+            >
+              <path d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.537A.5.5 0 014 22.143V3a1 1 0 011-1z" />
+            </svg>
+          </div>
+          <span
+            className="text-base font-semibold tracking-tight text-white"
+            style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+          >
+            shelf<span className="text-amber-400">r</span>
+          </span>
+        </div>
         <button
           onClick={onLogout}
-          className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+          className="text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors"
         >
           Sign out
         </button>
       </div>
 
       {/* Current page */}
-      <div className="px-4 py-3 bg-white border-b border-stone-200">
-        <p className="text-xs text-stone-400 mb-1">Current page</p>
-        <p className="text-sm text-stone-700 font-medium truncate">
+      <div className="px-4 py-3 bg-white border-b border-neutral-200/80">
+        <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1">
+          Current page
+        </p>
+        <p className="text-xs text-[#1c1e2a] font-medium truncate">
           {tabInfo?.title ?? 'Loading...'}
         </p>
         {tabInfo?.url && (
-          <p className="text-xs text-stone-400 truncate mt-0.5">
+          <p className="text-[11px] text-neutral-400 truncate mt-0.5">
             {extractDomain(tabInfo.url)}
           </p>
         )}
       </div>
 
       {/* Collection picker */}
-      <div className="px-4 py-3">
-        <label className="block text-xs font-medium text-stone-500 mb-1.5">
+      <div className="px-4 py-3 flex-1">
+        <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1.5 block">
           Save to collection
         </label>
         {loading ? (
-          <div className="text-sm text-stone-400">Loading collections...</div>
+          <div className="text-xs text-neutral-400 py-2">
+            Loading collections...
+          </div>
         ) : collections.length === 0 ? (
-          <div className="text-sm text-stone-400">
+          <div className="text-xs text-neutral-400 py-2">
             No collections yet. Create one in the Shelfr app first.
           </div>
         ) : (
@@ -183,8 +194,8 @@ export function MainView({ userId, onLogout }: MainViewProps) {
             <select
               value={selectedId ?? ''}
               onChange={(e) => handleCollectionChange(e.target.value)}
-              className="w-full appearance-none px-3 py-2.5 pr-8 rounded-lg border border-stone-300 bg-white text-sm
-                         focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent cursor-pointer"
+              className="w-full appearance-none text-xs px-3.5 py-2.5 pr-8 rounded border border-neutral-200 bg-white
+                         focus:outline-none focus:border-neutral-400 transition-colors cursor-pointer"
             >
               {collections.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -194,7 +205,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
               <svg
-                className="w-4 h-4 text-stone-400"
+                className="w-3.5 h-3.5 text-neutral-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -212,19 +223,21 @@ export function MainView({ userId, onLogout }: MainViewProps) {
 
         {selected && (
           <div className="flex items-center gap-1.5 mt-2">
-            <div
-              className="w-2.5 h-2.5 rounded-full"
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
               style={{ backgroundColor: selected.color }}
             />
-            <span className="text-xs text-stone-400">{selected.name}</span>
+            <span className="text-[11px] text-neutral-400">
+              {selected.name}
+            </span>
           </div>
         )}
       </div>
 
       {/* Add button */}
-      <div className="px-4 pb-4 mt-auto">
+      <div className="px-4 pb-4">
         {errorMsg && (
-          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-2">
+          <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded mb-2">
             {errorMsg}
           </p>
         )}
@@ -234,13 +247,13 @@ export function MainView({ userId, onLogout }: MainViewProps) {
           disabled={
             !selectedId || addState === 'adding' || isChromePage || !tabInfo
           }
-          className={`w-full py-3 rounded-lg text-sm font-medium transition-all
+          className={`w-full py-2.5 rounded text-xs font-medium transition-all duration-150
             ${
               addState === 'success'
                 ? 'bg-emerald-600 text-white'
                 : addState === 'error'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-[#1c1e2a] text-white hover:bg-[#2a2d3d] disabled:opacity-40 disabled:cursor-default'
             }`}
         >
           {addState === 'adding' && 'Saving...'}

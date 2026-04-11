@@ -31,52 +31,82 @@ export function LoginView({ onLogin }: LoginViewProps) {
 
   return (
     <div className="flex flex-col items-center px-6 py-8">
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
-          shelfr
-        </h1>
-        <p className="text-sm text-stone-500 mt-1">Sign in to save products</p>
+      {/* Logo — matches web Auth page */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="w-9 h-9 rounded bg-[#1c1e2a] flex items-center justify-center">
+          <svg
+            viewBox="0 0 24 24"
+            className="w-[18px] h-[18px] text-white fill-current"
+          >
+            <path d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.537A.5.5 0 014 22.143V3a1 1 0 011-1z" />
+          </svg>
+        </div>
+        <span
+          className="text-2xl font-semibold tracking-tight text-[#1c1e2a]"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+        >
+          shelf<span className="text-amber-500">r</span>
+        </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full space-y-3">
-        <div>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-3 py-2.5 rounded-lg border border-stone-300 bg-white text-sm
-                       placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full px-3 py-2.5 rounded-lg border border-stone-300 bg-white text-sm
-                       placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent"
-          />
-        </div>
-
-        {error && (
-          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2.5 rounded-lg bg-stone-900 text-white text-sm font-medium
-                     hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      {/* Card — matches web Auth card */}
+      <div className="w-full bg-white rounded shadow-sm border border-neutral-200/80 p-5">
+        <h2
+          className="text-lg font-semibold text-[#1c1e2a] mb-1"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
         >
-          {loading ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
+          Welcome back
+        </h2>
+        <p className="text-xs text-neutral-400 mb-5">
+          Sign in to save products
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <div>
+            <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1.5 block">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
+              className="w-full text-xs px-3.5 py-2.5 border border-neutral-200 rounded bg-white
+                         focus:outline-none focus:border-neutral-400 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1.5 block">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="Min 6 characters"
+              className="w-full text-xs px-3.5 py-2.5 border border-neutral-200 rounded bg-white
+                         focus:outline-none focus:border-neutral-400 transition-colors"
+            />
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full px-4 py-2 rounded bg-[#1c1e2a] text-white text-xs font-medium
+                       hover:bg-[#2a2d3d] disabled:opacity-40 disabled:cursor-default transition-all duration-150"
+          >
+            {loading ? 'Please wait...' : 'Sign in'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

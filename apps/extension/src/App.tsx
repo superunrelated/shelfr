@@ -25,8 +25,8 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[400px]">
-        <div className="text-sm text-stone-400">Loading...</div>
+      <div className="flex items-center justify-center min-h-[420px]">
+        <div className="text-xs text-neutral-400">Loading...</div>
       </div>
     );
   }

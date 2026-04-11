@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="16" fill="#1c1e2a"/>
+  <text x="64" y="76" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="36" letter-spacing="-0.025em">
+    <tspan fill="#ffffff">shelf</tspan><tspan fill="#fbbf24">r</tspan>
+  </text>
+</svg>
