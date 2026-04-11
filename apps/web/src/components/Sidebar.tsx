@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RiAddLine, RiLogoutBoxRLine } from '@remixicon/react';
+import { RiAddLine, RiLogoutBoxRLine, RiDeleteBinLine } from '@remixicon/react';
 import { Button, Logo, Avatar } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
 
@@ -10,6 +10,7 @@ interface SidebarProps {
   open: boolean;
   onSwitchCollection: (id: string) => void;
   onCreateCollection: (name: string) => void;
+  onDeleteCollection: (id: string) => void;
   onSignOut: () => void;
   onClose: () => void;
 }
@@ -21,6 +22,7 @@ export function Sidebar({
   open,
   onSwitchCollection,
   onCreateCollection,
+  onDeleteCollection,
   onSignOut,
   onClose,
 }: SidebarProps) {
@@ -54,18 +56,32 @@ export function Sidebar({
             Collections
           </p>
           {collections.map((c) => (
-            <button
+            <div
               key={c.id}
-              onClick={() => onSwitchCollection(c.id)}
-              aria-current={activeColId === c.id ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-6 py-3 text-left text-[13px] transition-all duration-150 ${activeColId === c.id ? 'text-white bg-white/8' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'}`}
+              className={`group flex items-center transition-all duration-150 ${activeColId === c.id ? 'text-white bg-white/8' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'}`}
             >
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ background: c.color }}
-              />
-              <span className="flex-1 truncate">{c.name}</span>
-            </button>
+              <button
+                onClick={() => onSwitchCollection(c.id)}
+                aria-current={activeColId === c.id ? 'page' : undefined}
+                className="flex-1 flex items-center gap-3 px-6 py-3 text-left text-[13px]"
+              >
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: c.color }}
+                />
+                <span className="flex-1 truncate">{c.name}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteCollection(c.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-red-400 transition-all"
+                title="Delete collection"
+              >
+                <RiDeleteBinLine size={13} />
+              </button>
+            </div>
           ))}
           {collections.length === 0 && (
             <p className="px-6 py-6 text-xs text-neutral-600">

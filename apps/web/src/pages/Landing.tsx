@@ -138,9 +138,12 @@ export function LandingPage() {
           >
             shelf<span className="text-amber-400">r</span>
           </span>
-          <span className="text-[11px] text-neutral-300">
-            Built for better buying decisions
-          </span>
+          <Link
+            to="/privacy"
+            className="text-[11px] text-neutral-300 hover:text-neutral-500 transition-colors"
+          >
+            Privacy policy
+          </Link>
         </div>
       </footer>
     </div>

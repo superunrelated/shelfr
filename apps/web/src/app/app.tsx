@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { LandingPage } from '../pages/Landing';
 import { AuthPage } from '../pages/Auth';
 import { HomePage } from '../pages/Home';
+import { PrivacyPage } from '../pages/Privacy';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ export default function App() {
           </PublicOnlyRoute>
         }
       />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/c"
         element={

@@ -22,7 +22,6 @@ import {
   RiStore2Line,
   RiArrowDownSLine,
   RiGridFill,
-  RiGridLine,
   RiListCheck,
   RiImageLine,
   RiArchiveLine,
@@ -33,7 +32,7 @@ import {
 
 type SortKey = 'rating' | 'price' | 'status';
 type SortDir = 'asc' | 'desc';
-type ViewMode = 'big' | 'medium' | 'compact' | 'list';
+type ViewMode = 'big' | 'compact' | 'list';
 
 const STATUS_ORDER: Record<ProductStatus, number> = {
   purchased: 0,
@@ -101,7 +100,11 @@ export function HomePage() {
   const navigate = useNavigate();
 
   // Data hooks
-  const { collections, create: createCollection } = useCollections();
+  const {
+    collections,
+    create: createCollection,
+    remove: removeCollection,
+  } = useCollections();
   const [activeColId, setActiveColId] = useState<string | null>(null);
   const {
     products,
@@ -114,12 +117,36 @@ export function HomePage() {
   } = useProducts(activeColId);
   const { shops, create: createShop } = useShops(activeColId);
 
+  // Collection cover images (latest product image per collection)
+  const [collectionCovers, setCollectionCovers] = useState<
+    Record<string, string>
+  >({});
+  useEffect(() => {
+    if (activeColId || collections.length === 0) return;
+    async function fetchCovers() {
+      const covers: Record<string, string> = {};
+      for (const c of collections) {
+        const { data } = await supabase
+          .from('products')
+          .select('image_url')
+          .eq('collection_id', c.id)
+          .not('image_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (data?.image_url) covers[c.id] = data.image_url;
+      }
+      setCollectionCovers(covers);
+    }
+    fetchCovers();
+  }, [activeColId, collections]);
+
   // UI state
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<'products' | 'shops'>('products');
   const [sortBy, setSortBy] = useState<SortKey>('rating');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [viewMode, setViewMode] = useState<ViewMode>('medium');
+  const [viewMode, setViewMode] = useState<ViewMode>('big');
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
@@ -680,9 +707,7 @@ export function HomePage() {
   const gridCls =
     viewMode === 'big'
       ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5'
-      : viewMode === 'medium'
-        ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
-        : 'grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5';
+      : 'grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5';
 
   // ── Render ──
   return (
@@ -694,17 +719,78 @@ export function HomePage() {
         open={sidebarOpen}
         onSwitchCollection={switchCollection}
         onCreateCollection={handleCreateCollection}
+        onDeleteCollection={(id) => {
+          if (!window.confirm('Delete this collection and all its products?'))
+            return;
+          removeCollection(id);
+          if (activeColId === id) {
+            setActiveColId(null);
+            navigate('/c');
+          }
+        }}
         onSignOut={signOut}
         onClose={() => setSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {!activeCol ? (
-          <EmptyState
-            icon={RiBookmarkLine}
-            title="Welcome to Shelfr"
-            description="Create a collection to start tracking products."
-          />
+          <div className="flex-1 overflow-y-auto">
+            <header className="bg-white border-b border-neutral-200/80 px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-4 flex-shrink-0">
+              <button
+                className="md:hidden p-1.5 rounded text-neutral-400 hover:bg-neutral-100"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+              >
+                <RiMenuLine size={20} />
+              </button>
+              <h1 className="text-[18px] font-semibold text-[#1c1e2a] tracking-tight font-serif">
+                Collections
+              </h1>
+            </header>
+            {collections.length === 0 ? (
+              <EmptyState
+                icon={RiBookmarkLine}
+                title="No collections yet"
+                description="Create a collection from the sidebar to start tracking products."
+              />
+            ) : (
+              <div className="p-3 md:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {collections.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => switchCollection(c.id)}
+                    className="bg-white rounded shadow-sm border border-neutral-200/80 overflow-hidden text-left hover:shadow-md hover:-translate-y-0.5 transition-all group"
+                  >
+                    <div className="aspect-[4/3] bg-neutral-100 relative overflow-hidden">
+                      {collectionCovers[c.id] ? (
+                        <img
+                          src={collectionCovers[c.id]}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <RiImageLine size={32} className="text-neutral-200" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ background: c.color }}
+                        />
+                        <p className="text-[14px] font-semibold text-[#1c1e2a] font-serif truncate">
+                          {c.name}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
           <>
             {/* Topbar */}
@@ -825,7 +911,6 @@ export function HomePage() {
                   <div className="flex items-center border border-neutral-200 rounded overflow-hidden">
                     {[
                       { key: 'big' as ViewMode, Icon: RiLayoutGridLine },
-                      { key: 'medium' as ViewMode, Icon: RiGridLine },
                       { key: 'compact' as ViewMode, Icon: RiGridFill },
                       { key: 'list' as ViewMode, Icon: RiListCheck },
                     ].map((v) => (

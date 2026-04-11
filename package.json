@@ -7,6 +7,7 @@
     "start": "nx serve web",
     "build": "nx build web",
     "build:extension": "nx build extension",
+    "zip:extension": "nx build extension && cd dist/extension && zip -r ../../shelfr-extension.zip . && echo 'Created shelfr-extension.zip'",
     "dev:extension": "nx dev extension",
     "dev": "nx serve web",
     "deploy:functions": "npx supabase functions deploy scrape-url --project-ref juimdgzjknasimubewhp --no-verify-jwt",

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280" width="440" height="280">
+  <rect width="440" height="280" fill="#1c1e2a"/>
+
+  <!-- Logo -->
+  <text x="220" y="125" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="40" letter-spacing="-0.025em">
+    <tspan fill="#ffffff">shelf</tspan><tspan fill="#fbbf24">r</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="220" y="165" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#a3a3a3">
+    Save products. Compare. Decide.
+  </text>
+</svg>

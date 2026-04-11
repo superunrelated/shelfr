@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800">
+  <rect width="1280" height="800" fill="#f5f5f4" rx="0"/>
+
+  <!-- Browser chrome mockup -->
+  <rect x="0" y="0" width="1280" height="48" fill="#e5e5e5"/>
+  <circle cx="24" cy="24" r="6" fill="#ef4444"/>
+  <circle cx="44" cy="24" r="6" fill="#eab308"/>
+  <circle cx="64" cy="24" r="6" fill="#22c55e"/>
+  <rect x="200" y="12" width="880" height="24" rx="12" fill="#ffffff"/>
+  <text x="640" y="29" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#a3a3a3">example-store.com/products/great-product</text>
+
+  <!-- Extension popup -->
+  <g transform="translate(440, 80)">
+    <!-- Popup shadow -->
+    <rect x="-2" y="-2" width="404" height="504" rx="10" fill="#00000020"/>
+    <rect x="0" y="0" width="400" height="500" rx="8" fill="#ffffff"/>
+
+    <!-- Dark header -->
+    <rect x="0" y="0" width="400" height="52" rx="8" fill="#1c1e2a"/>
+    <rect x="0" y="20" width="400" height="32" fill="#1c1e2a"/>
+    <!-- Bookmark icon -->
+    <rect x="16" y="13" width="28" height="28" rx="6" fill="rgba(255,255,255,0.1)"/>
+    <text x="30" y="32" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="white">S</text>
+    <!-- Logo text -->
+    <text x="54" y="33" font-family="Georgia, 'Times New Roman', serif" font-size="17" font-weight="600" letter-spacing="-0.025em">
+      <tspan fill="#ffffff">shelf</tspan><tspan fill="#fbbf24">r</tspan>
+    </text>
+    <text x="350" y="33" text-anchor="end" font-family="system-ui, sans-serif" font-size="11" fill="#737373">Sign out</text>
+
+    <!-- Current page section -->
+    <rect x="0" y="52" width="400" height="64" fill="#ffffff"/>
+    <line x1="0" y1="116" x2="400" y2="116" stroke="#e5e5e5" stroke-width="1"/>
+    <text x="20" y="74" font-family="system-ui, sans-serif" font-size="10" fill="#a3a3a3" letter-spacing="0.05em" text-transform="uppercase">CURRENT PAGE</text>
+    <text x="20" y="94" font-family="system-ui, sans-serif" font-size="13" fill="#1c1e2a" font-weight="500">Rayon de Lumiere Pendant Light - Natural</text>
+    <text x="20" y="110" font-family="system-ui, sans-serif" font-size="11" fill="#a3a3a3">example-store.com</text>
+
+    <!-- Collection picker -->
+    <text x="20" y="142" font-family="system-ui, sans-serif" font-size="10" fill="#a3a3a3" letter-spacing="0.05em">SAVE TO COLLECTION</text>
+    <rect x="20" y="150" width="360" height="38" rx="6" fill="#ffffff" stroke="#e5e5e5" stroke-width="1"/>
+    <text x="32" y="174" font-family="system-ui, sans-serif" font-size="13" fill="#1c1e2a">Living Room Lighting</text>
+    <text x="366" y="174" text-anchor="end" font-family="system-ui, sans-serif" font-size="14" fill="#a3a3a3">&#x25BE;</text>
+
+    <!-- Collection indicator -->
+    <circle cx="28" cy="204" r="4" fill="#5b8db8"/>
+    <text x="38" y="208" font-family="system-ui, sans-serif" font-size="11" fill="#a3a3a3">Living Room Lighting</text>
+
+    <!-- Add button -->
+    <rect x="20" y="440" width="360" height="42" rx="6" fill="#1c1e2a"/>
+    <text x="200" y="466" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" fill="#ffffff" font-weight="500">Add to shelf</text>
+  </g>
+
+  <!-- Label -->
+  <text x="640" y="640" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="24" fill="#1c1e2a" font-weight="600">
+    Save products in one click
+  </text>
+  <text x="640" y="670" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" fill="#a3a3a3">
+    Click the Shelfr icon on any product page to save it to your collection
+  </text>
+</svg>
