@@ -127,7 +127,7 @@ export function AuthPage() {
           )}
         </p>
         <Link
-          to="/privacy"
+          to="/privacy-policy"
           className="text-[11px] text-neutral-300 hover:text-neutral-500 transition-colors text-center mt-6 block"
         >
           Privacy policy

@@ -141,7 +141,7 @@ export function Sidebar({
           </Button>
           <div className="flex items-center justify-center gap-3 mt-3">
             <Link
-              to="/privacy"
+              to="/privacy-policy"
               className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors"
             >
               Privacy

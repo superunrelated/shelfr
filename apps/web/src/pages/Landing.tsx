@@ -139,7 +139,7 @@ export function LandingPage() {
             shelf<span className="text-amber-400">r</span>
           </span>
           <Link
-            to="/privacy"
+            to="/privacy-policy"
             className="text-[11px] text-neutral-300 hover:text-neutral-500 transition-colors"
           >
             Privacy policy
