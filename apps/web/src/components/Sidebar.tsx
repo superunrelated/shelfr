@@ -21,6 +21,7 @@ interface SidebarProps {
   onSignOut: () => void;
   onDeleteAccount: () => void;
   onClose: () => void;
+  notificationSlot?: React.ReactNode;
 }
 
 export function Sidebar({
@@ -35,6 +36,7 @@ export function Sidebar({
   onSignOut,
   onDeleteAccount,
   onClose,
+  notificationSlot,
 }: SidebarProps) {
   const [showNewCol, setShowNewCol] = useState(false);
   const [newColName, setNewColName] = useState('');
@@ -150,6 +152,7 @@ export function Sidebar({
             <span className="text-xs text-neutral-400 truncate flex-1">
               {userEmail}
             </span>
+            {notificationSlot}
           </div>
           <Button variant="ghost-muted" fullWidth onClick={onSignOut}>
             <RiLogoutBoxRLine size={14} /> Sign out

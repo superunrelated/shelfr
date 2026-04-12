@@ -25,7 +25,9 @@ import { CollectionToolbar } from '../components/CollectionToolbar';
 import { CompareTable } from '../components/CompareTable';
 import { ShopsTab } from '../components/ShopsTab';
 import { ShareModal } from '../components/ShareModal';
+import { NotificationBell } from '../components/NotificationBell';
 import { useCollectionMembers } from '../hooks/useCollectionMembers';
+import { useNotifications } from '../hooks/useNotifications';
 import {
   sortProducts,
   groupByStatus,
@@ -67,6 +69,13 @@ export function HomePage() {
     myRole,
   } = useCollectionMembers(activeColId);
   const { shops, create: createShop } = useShops(activeColId);
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllRead,
+    dismiss: dismissNotification,
+  } = useNotifications();
 
   // Collection cover images
   const [collectionCovers, setCollectionCovers] = useState<
@@ -523,6 +532,15 @@ export function HomePage() {
           navigate('/');
         }}
         onClose={() => setSidebarOpen(false)}
+        notificationSlot={
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAsRead={markAsRead}
+            onMarkAllRead={markAllRead}
+            onDismiss={dismissNotification}
+          />
+        }
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">

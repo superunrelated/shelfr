@@ -81,19 +81,31 @@ export function MainView({ userId, onLogout }: MainViewProps) {
       let shopName = domain;
 
       try {
-        const { data: scrapeData } = await supabase.functions.invoke(
-          'scrape-url',
-          { body: { url } }
-        );
+        const { data: scrapeData, error: scrapeError } =
+          await supabase.functions.invoke('scrape-url', { body: { url } });
+        console.warn('[shelfr] scrape response:', {
+          scrapeData,
+          scrapeError,
+          typeOfData: typeof scrapeData,
+        });
         if (scrapeData && !scrapeData.error) {
           title = scrapeData.title || title;
           imageUrl = scrapeData.image_url || null;
           price = scrapeData.price || null;
           shopName = scrapeData.shop_name || domain;
         }
-      } catch {
+      } catch (e) {
+        console.error('[shelfr] scrape invoke failed:', e);
         // Scrape failed — continue with tab metadata
       }
+
+      console.warn('[shelfr] inserting product:', {
+        title,
+        imageUrl,
+        price,
+        shopName,
+        domain,
+      });
 
       const { error } = await supabase.from('products').insert({
         user_id: userId,

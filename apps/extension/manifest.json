@@ -4,6 +4,7 @@
   "description": "Save products to your Shelfr collections while browsing",
   "version": "1.0.0",
   "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://*.supabase.co/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

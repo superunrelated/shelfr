@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Verify the inviting user owns this collection
     const { data: collection, error: colErr } = await userClient
       .from('collections')
-      .select('id, user_id')
+      .select('id, user_id, name, slug')
       .eq('id', collection_id)
       .single();
 
@@ -139,6 +139,15 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Create in-app notification for the invited user
+    await adminClient.from('notifications').insert({
+      user_id: invitedUserId,
+      type: 'invite',
+      title: `You've been invited to "${collection.name}"`,
+      body: `${inviter.email} shared a collection with you as ${role}.`,
+      link: `/c/${collection.slug}`,
+    });
 
     return new Response(
       JSON.stringify({

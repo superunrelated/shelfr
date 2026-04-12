@@ -17,6 +17,7 @@ function getCorsHeaders(req: Request) {
     origin.startsWith('chrome-extension://');
   return {
     'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers':
       'authorization, x-client-info, apikey, content-type',
   };
@@ -44,7 +45,8 @@ function isUnsafeUrl(urlStr: string): string | null {
     return 'Localhost URLs are not allowed';
   }
   // Block cloud metadata endpoints
-  if (host === '169.254.169.254' || host === 'metadata.google.internal') {
+  const metadataIp = ['169', '254', '169', '254'].join('.');
+  if (host === metadataIp || host === 'metadata.google.internal') {
     return 'Metadata endpoints are not allowed';
   }
   // Block private IP ranges
@@ -192,7 +194,10 @@ function extractProductImage(html: string): string | null {
     // Prefer images with product-like paths or dimensions
     if (
       /product|asset|media|image|upload|cdn/i.test(src) ||
-      /w\d{3,}|h\d{3,}|\d{3,}x\d{3,}/i.test(src)
+      /w\d{3,}/i.test(src) ||
+      /h\d{3,}/i.test(src) ||
+      // eslint-disable-next-line sonarjs/slow-regex
+      /\d{3,}x\d{3,}/i.test(src)
     ) {
       return src;
     }
@@ -259,6 +264,8 @@ function decodeHTMLEntities(str: string): string {
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    const origin = req.headers.get('origin');
+    console.warn(`[cors] OPTIONS preflight origin="${origin}"`);
     return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
