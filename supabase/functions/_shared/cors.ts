@@ -6,17 +6,13 @@ const ALLOWED_ORIGINS = [
 
 export function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') ?? '';
-  const referer = req.headers.get('referer') ?? '';
 
-  // Check origin header first, then fall back to referer
-  const matched = ALLOWED_ORIGINS.find(
-    (o) => origin.startsWith(o) || referer.startsWith(o)
-  );
+  const matched = ALLOWED_ORIGINS.find((o) => origin === o);
 
   // Allow chrome extensions
   const isExtension = origin.startsWith('chrome-extension://');
 
-  const allowedOrigin = matched ?? (isExtension ? origin : '*');
+  const allowedOrigin = matched ?? (isExtension ? origin : ALLOWED_ORIGINS[0]);
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,

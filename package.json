@@ -11,7 +11,7 @@
     "dev:extension": "nx dev extension",
     "dev": "nx serve web",
     "db:push": "npx supabase db push",
-    "deploy:functions": "npx supabase functions deploy scrape-url --project-ref juimdgzjknasimubewhp --no-verify-jwt && npx supabase functions deploy invite-member --project-ref juimdgzjknasimubewhp --no-verify-jwt",
+    "deploy:functions": "npx supabase functions deploy scrape-url --project-ref juimdgzjknasimubewhp && npx supabase functions deploy invite-member --project-ref juimdgzjknasimubewhp",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "nx run-many --target=lint --all",

@@ -10,6 +10,10 @@ const ALLOWED_ORIGINS = [
   'https://superunrelated.github.io',
 ];
 
+// Well-known cloud metadata IP that must be blocked for SSRF protection
+// eslint-disable-next-line sonarjs/no-hardcoded-ip
+const METADATA_IP = '169.254.169.254';
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') ?? '';
   const allowed =
@@ -21,6 +25,41 @@ function getCorsHeaders(req: Request) {
     'Access-Control-Allow-Headers':
       'authorization, x-client-info, apikey, content-type',
   };
+}
+
+function jsonResponse(
+  req: Request,
+  body: Record<string, unknown>,
+  status = 200
+) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+  });
+}
+
+function parseIpv4(host: string): number[] | null {
+  const parts = host.split('.').map(Number);
+  return parts.length === 4 && parts.every((n) => !isNaN(n)) ? parts : null;
+}
+
+function isPrivateIpv4(parts: number[]): string | null {
+  if (parts[0] === 127) {
+    return 'Localhost URLs are not allowed';
+  }
+  if (parts[0] === 10) {
+    return 'Private IP addresses are not allowed';
+  }
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) {
+    return 'Private IP addresses are not allowed';
+  }
+  if (parts[0] === 192 && parts[1] === 168) {
+    return 'Private IP addresses are not allowed';
+  }
+  if (parts[0] === 169 && parts[1] === 254) {
+    return 'Link-local addresses are not allowed';
+  }
+  return null;
 }
 
 // SSRF protection: reject URLs that point to internal/private networks
@@ -35,36 +74,37 @@ function isUnsafeUrl(urlStr: string): string | null {
     return 'Only HTTP/HTTPS URLs are allowed';
   }
   const host = parsed.hostname.toLowerCase();
-  // Block localhost
+  if (host === 'localhost' || host === '0.0.0.0') {
+    return 'Localhost URLs are not allowed';
+  }
+  const ipv4 = parseIpv4(host);
+  if (ipv4) return isPrivateIpv4(ipv4);
+  // Block IPv6 loopback and private ranges
   if (
-    host === 'localhost' ||
-    host === '127.0.0.1' ||
     host === '::1' ||
-    host === '0.0.0.0'
+    host === '[::1]' ||
+    host.startsWith('fe80') ||
+    host.startsWith('fc00') ||
+    host.startsWith('fd')
   ) {
     return 'Localhost URLs are not allowed';
   }
-  // Block cloud metadata endpoints
-  const metadataIp = ['169', '254', '169', '254'].join('.');
-  if (host === metadataIp || host === 'metadata.google.internal') {
-    return 'Metadata endpoints are not allowed';
+  // Block alternate IP representations (decimal, octal, hex single-integer)
+  if (
+    /^\d+$/.test(host) ||
+    /^0[xX][0-9a-fA-F]+$/.test(host) ||
+    /^0\d+$/.test(host)
+  ) {
+    return 'Numeric IP addresses are not allowed';
   }
-  // Block private IP ranges
-  const parts = host.split('.').map(Number);
-  if (parts.length === 4 && parts.every((n) => !isNaN(n))) {
-    if (parts[0] === 10) return 'Private IP addresses are not allowed';
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) {
-      return 'Private IP addresses are not allowed';
-    }
-    if (parts[0] === 192 && parts[1] === 168) {
-      return 'Private IP addresses are not allowed';
-    }
+  // Block cloud metadata endpoints
+  if (host === METADATA_IP || host === 'metadata.google.internal') {
+    return 'Metadata endpoints are not allowed';
   }
   return null;
 }
 
 function extractMeta(html: string, property: string): string | null {
-  // Match <meta property="og:title" content="..."> or <meta name="..." content="...">
   const patterns = [
     new RegExp(
       `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`,
@@ -85,6 +125,15 @@ function extractMeta(html: string, property: string): string | null {
 function extractTitle(html: string): string | null {
   const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   return match?.[1]?.trim() ? decodeHTMLEntities(match[1].trim()) : null;
+}
+
+function parseNumericPrice(val: unknown): number | null {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') {
+    const n = parseFloat(val);
+    if (!isNaN(n)) return n;
+  }
+  return null;
 }
 
 function extractPrice(html: string): number | null {
@@ -122,6 +171,13 @@ function extractPrice(html: string): number | null {
   return null;
 }
 
+function findPriceInRecord(record: Record<string, unknown>): number | null {
+  const price = parseNumericPrice(record['price']);
+  if (price !== null) return price;
+  if (record['offers']) return findPrice(record['offers']);
+  return null;
+}
+
 function findPrice(obj: unknown): number | null {
   if (!obj || typeof obj !== 'object') return null;
   if (Array.isArray(obj)) {
@@ -132,23 +188,11 @@ function findPrice(obj: unknown): number | null {
     return null;
   }
   const record = obj as Record<string, unknown>;
-  // Check if this object has offers.price or price directly
   if (record['@type'] === 'Product' || record['@type'] === 'Offer') {
-    if (typeof record['price'] === 'number') return record['price'];
-    if (typeof record['price'] === 'string') {
-      const val = parseFloat(record['price']);
-      if (!isNaN(val)) return val;
-    }
-    if (record['offers']) return findPrice(record['offers']);
+    return findPriceInRecord(record);
   }
-  if (typeof record['price'] === 'number') return record['price'];
-  if (typeof record['price'] === 'string') {
-    const val = parseFloat(record['price']);
-    if (!isNaN(val)) return val;
-  }
-  // Recurse into offers
-  if (record['offers']) return findPrice(record['offers']);
-  // Check array items
+  const direct = findPriceInRecord(record);
+  if (direct !== null) return direct;
   for (const val of Object.values(record)) {
     if (typeof val === 'object' && val !== null) {
       const p = findPrice(val);
@@ -156,6 +200,28 @@ function findPrice(obj: unknown): number | null {
     }
   }
   return null;
+}
+
+const SKIP_PATTERN = /icon|logo|badge|sprite|pixel|tracking/i;
+
+function isProductImageSrc(src: string): boolean {
+  return (
+    /product|asset|media|image|upload|cdn/i.test(src) ||
+    /w\d{3,}/i.test(src) ||
+    /h\d{3,}/i.test(src) ||
+    // eslint-disable-next-line sonarjs/slow-regex
+    /\d{3,}x\d{3,}/i.test(src)
+  );
+}
+
+function extractImgSrcs(html: string): string[] {
+  const tags = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi) ?? [];
+  const srcs: string[] = [];
+  for (const tag of tags) {
+    const m = tag.match(/src=["']([^"']+)["']/i);
+    if (m?.[1]) srcs.push(m[1]);
+  }
+  return srcs;
 }
 
 function extractProductImage(html: string): string | null {
@@ -182,40 +248,18 @@ function extractProductImage(html: string): string | null {
     html.match(/<img[^>]+src=["']([^"']+)["'][^>]+itemprop=["']image["']/i);
   if (itempropMatch?.[1]) return itempropMatch[1];
 
+  const srcs = extractImgSrcs(html);
   // Try the largest image in the main content (heuristic: first large image with product-like src)
-  const imgTags = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi) ?? [];
-  for (const tag of imgTags) {
-    const srcMatch = tag.match(/src=["']([^"']+)["']/i);
-    if (!srcMatch?.[1]) continue;
-    const src = srcMatch[1];
-    // Skip tiny icons, tracking pixels, logos
-    if (/icon|logo|badge|sprite|pixel|tracking|1x1|spacer/i.test(src)) continue;
-    if (/\.(svg|gif)$/i.test(src)) continue;
-    // Prefer images with product-like paths or dimensions
-    if (
-      /product|asset|media|image|upload|cdn/i.test(src) ||
-      /w\d{3,}/i.test(src) ||
-      /h\d{3,}/i.test(src) ||
-      // eslint-disable-next-line sonarjs/slow-regex
-      /\d{3,}x\d{3,}/i.test(src)
-    ) {
-      return src;
-    }
+  for (const src of srcs) {
+    if (SKIP_PATTERN.test(src) || /\.(svg|gif)$/i.test(src)) continue;
+    if (isProductImageSrc(src)) return src;
   }
-
   // Last resort: first non-tiny jpg/png/webp
-  for (const tag of imgTags) {
-    const srcMatch = tag.match(/src=["']([^"']+)["']/i);
-    if (!srcMatch?.[1]) continue;
-    const src = srcMatch[1];
-    if (
-      /\.(jpg|jpeg|png|webp)/i.test(src) &&
-      !/icon|logo|badge|sprite|pixel|tracking/i.test(src)
-    ) {
+  for (const src of srcs) {
+    if (/\.(jpg|jpeg|png|webp)/i.test(src) && !SKIP_PATTERN.test(src)) {
       return src;
     }
   }
-
   return null;
 }
 
@@ -261,253 +305,235 @@ function decodeHTMLEntities(str: string): string {
     .replace(/&#x2F;/g, '/');
 }
 
+function resolveImageUrl(image: string | null, pageUrl: string): string | null {
+  if (!image) return null;
+  if (image.startsWith('http')) return image;
+  try {
+    return new URL(image, pageUrl).toString();
+  } catch {
+    return image;
+  }
+}
+
+function getImageCandidates(imgUrl: string, pageUrl: string): string[] {
+  const candidates = [imgUrl];
+  try {
+    const parsed = new URL(imgUrl);
+    const pageParsed = new URL(pageUrl);
+
+    if (parsed.hostname !== pageParsed.hostname) {
+      const parts = parsed.hostname.split('.');
+      for (let i = 1; i < parts.length - 1; i++) {
+        const shorter = parts.slice(i).join('.');
+        if (shorter.includes('.')) {
+          candidates.push(
+            `${parsed.protocol}//${shorter}${parsed.pathname}${parsed.search}`
+          );
+        }
+      }
+      const pageHost = pageParsed.hostname.replace(/^www\./, '');
+      if (!candidates.some((c) => new URL(c).hostname === pageHost)) {
+        candidates.push(
+          `${parsed.protocol}//${pageHost}${parsed.pathname}${parsed.search}`
+        );
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return candidates;
+}
+
+async function tryFetchImage(
+  imgUrl: string,
+  referer: string
+): Promise<Response | null> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(imgUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'image/*',
+        Referer: referer,
+      },
+      redirect: 'follow',
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (resp.ok && resp.headers.get('content-type')?.startsWith('image')) {
+      return resp;
+    }
+    return null;
+  } catch (e) {
+    console.warn(
+      `[image] ${imgUrl} failed: ${e instanceof Error ? e.message : e}`
+    );
+    return null;
+  }
+}
+
+const EXT_BY_TYPE: Record<string, string> = {
+  png: 'png',
+  webp: 'webp',
+  gif: 'gif',
+  svg: 'svg',
+};
+
+function extFromContentType(contentType: string): string {
+  for (const [key, ext] of Object.entries(EXT_BY_TYPE)) {
+    if (contentType.includes(key)) return ext;
+  }
+  return 'jpg';
+}
+
+async function uploadImageToStorage(
+  imgResponse: Response,
+  resolvedImageUrl: string
+): Promise<string> {
+  try {
+    const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+    const ext = extFromContentType(contentType);
+    const imageData = await imgResponse.arrayBuffer();
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, imageData, { contentType, cacheControl: '31536000' });
+
+    if (uploadError) {
+      console.error(`[image] upload failed:`, uploadError.message);
+      return resolvedImageUrl;
+    }
+    const { data: publicUrl } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName);
+    return publicUrl.publicUrl;
+  } catch (uploadErr) {
+    console.error(
+      `[image] processing error: ${uploadErr instanceof Error ? uploadErr.message : uploadErr}`
+    );
+    return resolvedImageUrl;
+  }
+}
+
+async function storeImage(
+  resolvedImageUrl: string | null,
+  pageUrl: string
+): Promise<string | null> {
+  if (!resolvedImageUrl) return null;
+
+  const origin = new URL(pageUrl).origin;
+  const candidates = getImageCandidates(resolvedImageUrl, pageUrl);
+  let imgResponse: Response | null = null;
+
+  for (const candidate of candidates) {
+    imgResponse = await tryFetchImage(candidate, origin + '/');
+    if (imgResponse) break;
+  }
+
+  if (!imgResponse) {
+    console.warn(`[image] all candidates failed, falling back to original URL`);
+    return resolvedImageUrl;
+  }
+
+  return uploadImageToStorage(imgResponse, resolvedImageUrl);
+}
+
+function scrapeMetadata(html: string, url: string) {
+  const title =
+    extractMeta(html, 'og:title') ??
+    extractMeta(html, 'twitter:title') ??
+    extractTitle(html);
+  const image =
+    extractMeta(html, 'og:image') ??
+    extractMeta(html, 'twitter:image') ??
+    extractProductImage(html);
+  const price = extractPrice(html);
+  const siteName = extractMeta(html, 'og:site_name');
+  const resolvedImageUrl = resolveImageUrl(image, url);
+  const domain = new URL(url).hostname.replace(/^www\./, '');
+
+  return { title, resolvedImageUrl, price, siteName, domain };
+}
+
+async function fetchPage(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    redirect: 'follow',
+    signal: controller.signal,
+  });
+  clearTimeout(timeout);
+  return response;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return jsonResponse(req, { error: 'Missing auth' }, 401);
+    }
+
     const { url } = await req.json();
     if (!url || typeof url !== 'string') {
-      return new Response(JSON.stringify({ error: 'URL is required' }), {
-        status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-      });
+      return jsonResponse(req, { error: 'URL is required' }, 400);
     }
 
-    // SSRF check
     const unsafeReason = isUnsafeUrl(url);
     if (unsafeReason) {
-      return new Response(JSON.stringify({ error: unsafeReason }), {
-        status: 400,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-      });
+      return jsonResponse(req, { error: unsafeReason }, 400);
     }
 
-    // Fetch the page (8s timeout)
-    const pageController = new AbortController();
-    const pageTimeout = setTimeout(() => pageController.abort(), 8000);
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      redirect: 'follow',
-      signal: pageController.signal,
-    });
-    clearTimeout(pageTimeout);
-
+    const response = await fetchPage(url);
     if (!response.ok) {
-      return new Response(
-        JSON.stringify({ error: `Failed to fetch: ${response.status}` }),
-        {
-          status: 502,
-          headers: {
-            ...getCorsHeaders(req),
-            'Content-Type': 'application/json',
-          },
-        }
+      return jsonResponse(
+        req,
+        { error: `Failed to fetch: ${response.status}` },
+        502
       );
     }
 
     const html = await response.text();
+    const { title, resolvedImageUrl, price, siteName, domain } = scrapeMetadata(
+      html,
+      url
+    );
+    const storedImageUrl = await storeImage(resolvedImageUrl, url);
 
-    // Extract metadata
-    const title =
-      extractMeta(html, 'og:title') ??
-      extractMeta(html, 'twitter:title') ??
-      extractTitle(html);
-    const image =
-      extractMeta(html, 'og:image') ??
-      extractMeta(html, 'twitter:image') ??
-      extractProductImage(html);
-    const price = extractPrice(html);
-    const siteName = extractMeta(html, 'og:site_name');
-
-    console.log(`[scrape] url=${url}`);
-    console.log(`[scrape] title=${title}`);
-    console.log(`[scrape] og:image raw=${image}`);
-    console.log(`[scrape] price=${price}, site_name=${siteName}`);
-
-    // Resolve relative image URLs
-    let resolvedImageUrl = image;
-    if (image && !image.startsWith('http')) {
-      try {
-        resolvedImageUrl = new URL(image, url).toString();
-      } catch {
-        resolvedImageUrl = image;
-      }
-    }
-
-    console.log(`[scrape] image resolved=${resolvedImageUrl}`);
-
-    const domain = new URL(url).hostname.replace(/^www\./, '');
-    const origin = new URL(url).origin;
-
-    // Build candidate image URLs by progressively stripping subdomains
-    function getImageCandidates(imgUrl: string, pageUrl: string): string[] {
-      const candidates = [imgUrl];
-      try {
-        const parsed = new URL(imgUrl);
-        const pageParsed = new URL(pageUrl);
-
-        if (parsed.hostname !== pageParsed.hostname) {
-          // Progressive subdomain stripping on the image host
-          // e.g. b2c-api-prod-internal.cc.mitre10.co.nz -> cc.mitre10.co.nz -> mitre10.co.nz
-          const parts = parsed.hostname.split('.');
-          for (let i = 1; i < parts.length - 1; i++) {
-            const shorter = parts.slice(i).join('.');
-            if (shorter.includes('.')) {
-              candidates.push(
-                `${parsed.protocol}//${shorter}${parsed.pathname}${parsed.search}`
-              );
-            }
-          }
-
-          // Also try the page's own domain with the image path
-          const pageHost = pageParsed.hostname.replace(/^www\./, '');
-          if (!candidates.some((c) => new URL(c).hostname === pageHost)) {
-            candidates.push(
-              `${parsed.protocol}//${pageHost}${parsed.pathname}${parsed.search}`
-            );
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      return candidates;
-    }
-
-    async function tryFetchImage(
-      imgUrl: string,
-      referer: string
-    ): Promise<Response | null> {
-      try {
-        console.log(`[image] trying ${imgUrl}`);
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 8000);
-        const resp = await fetch(imgUrl, {
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            Accept: 'image/*',
-            Referer: referer,
-          },
-          redirect: 'follow',
-          signal: ctrl.signal,
-        });
-        clearTimeout(t);
-        console.log(
-          `[image] ${imgUrl} -> status=${resp.status} type=${resp.headers.get('content-type')}`
-        );
-        if (resp.ok && resp.headers.get('content-type')?.startsWith('image')) {
-          return resp;
-        }
-        return null;
-      } catch (e) {
-        console.warn(
-          `[image] ${imgUrl} failed: ${e instanceof Error ? e.message : e}`
-        );
-        return null;
-      }
-    }
-
-    // Download image and store in Supabase Storage
-    let storedImageUrl: string | null = null;
-    if (resolvedImageUrl) {
-      const candidates = getImageCandidates(resolvedImageUrl, url);
-      let imgResponse: Response | null = null;
-
-      for (const candidate of candidates) {
-        imgResponse = await tryFetchImage(candidate, origin + '/');
-        if (imgResponse) break;
-      }
-
-      if (imgResponse) {
-        try {
-          const contentType =
-            imgResponse.headers.get('content-type') || 'image/jpeg';
-          const ext = contentType.includes('png')
-            ? 'png'
-            : contentType.includes('webp')
-              ? 'webp'
-              : contentType.includes('gif')
-                ? 'gif'
-                : contentType.includes('svg')
-                  ? 'svg'
-                  : 'jpg';
-
-          const imageData = await imgResponse.arrayBuffer();
-          const fileName = `${crypto.randomUUID()}.${ext}`;
-
-          console.log(
-            `[image] downloaded ${imageData.byteLength} bytes, uploading as ${fileName}`
-          );
-
-          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-          const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-          const supabase = createClient(supabaseUrl, serviceKey);
-
-          const { error: uploadError } = await supabase.storage
-            .from('product-images')
-            .upload(fileName, imageData, {
-              contentType,
-              cacheControl: '31536000',
-            });
-
-          if (!uploadError) {
-            const { data: publicUrl } = supabase.storage
-              .from('product-images')
-              .getPublicUrl(fileName);
-            storedImageUrl = publicUrl.publicUrl;
-            console.log(`[image] uploaded ok: ${storedImageUrl}`);
-          } else {
-            console.error(`[image] upload failed:`, uploadError.message);
-            storedImageUrl = resolvedImageUrl;
-          }
-        } catch (uploadErr) {
-          console.error(
-            `[image] processing error: ${uploadErr instanceof Error ? uploadErr.message : uploadErr}`
-          );
-          storedImageUrl = resolvedImageUrl;
-        }
-      } else {
-        console.warn(
-          `[image] all candidates failed, falling back to original URL`
-        );
-        storedImageUrl = resolvedImageUrl;
-      }
-    }
-
-    const result = {
+    return jsonResponse(req, {
       title: title ?? null,
       image_url: storedImageUrl ?? resolvedImageUrl ?? null,
       price: price ?? null,
       shop_name: siteName ?? domain,
       shop_domain: domain,
-    };
-    console.log(`[scrape] done:`, JSON.stringify(result));
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     const isTimeout = message.includes('abort');
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      req,
+      {
         error: isTimeout
           ? 'This site took too long to respond. You can fill in the details manually.'
           : `Could not fetch this page. You can fill in the details manually. (${message})`,
-      }),
-      {
-        status: isTimeout ? 504 : 500,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-      }
+      },
+      isTimeout ? 504 : 500
     );
   }
 });
