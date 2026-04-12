@@ -73,6 +73,7 @@ export function HomePage() {
     create: createCollection,
     remove: removeCollection,
     archive: archiveCollection,
+    refetch: refetchCollections,
   } = useCollections();
   const {
     invitations,
@@ -621,6 +622,7 @@ export function HomePage() {
             }
             onAcceptInvite={async (memberId) => {
               await acceptInvite(memberId);
+              await refetchCollections();
               toast('Invitation accepted', 'success');
             }}
             onDeclineInvite={async (memberId) => {
@@ -640,6 +642,7 @@ export function HomePage() {
                     .delete()
                     .eq('collection_id', collectionId)
                     .eq('user_id', user?.id);
+                  await refetchCollections();
                   toast('Left collection', 'info');
                   setConfirmAction(null);
                 },
@@ -685,6 +688,7 @@ export function HomePage() {
                       .eq('collection_id', activeColId)
                       .eq('user_id', user.id);
                     setActiveColId(null);
+                    await refetchCollections();
                     navigate('/collections');
                     toast('Left collection', 'info');
                     setConfirmAction(null);

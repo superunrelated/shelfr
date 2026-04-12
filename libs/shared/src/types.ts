@@ -26,6 +26,7 @@ export interface CollectionMember {
   role: 'viewer' | 'editor';
   accepted: boolean;
   invited_by: string;
+  invited_by_email?: string;
   created_at: string;
   email?: string;
 }

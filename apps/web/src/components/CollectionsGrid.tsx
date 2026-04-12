@@ -35,8 +35,14 @@ export function CollectionsGrid({
   const owned = collections.filter(
     (c) => c.user_id === currentUserId && !c.archived
   );
+  const pendingCollectionIds = new Set(
+    invitations.map((inv) => inv.collection_id)
+  );
   const shared = collections.filter(
-    (c) => c.user_id !== currentUserId && !c.archived
+    (c) =>
+      c.user_id !== currentUserId &&
+      !c.archived &&
+      !pendingCollectionIds.has(c.id)
   );
   const archived = collections.filter(
     (c) => c.user_id === currentUserId && c.archived
@@ -95,6 +101,7 @@ export function CollectionsGrid({
                       collectionName={col?.name ?? 'Collection'}
                       color={col?.color ?? '#a3a3a3'}
                       role={inv.role}
+                      inviterEmail={inv.invited_by_email}
                       onAccept={() => onAcceptInvite(inv.id)}
                       onDecline={() => onDeclineInvite(inv.id)}
                     />

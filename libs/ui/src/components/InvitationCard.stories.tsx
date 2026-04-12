@@ -24,6 +24,7 @@ export const Viewer: Story = {
     collectionName: 'Living Room Lighting',
     color: '#5b8db8',
     role: 'viewer',
+    inviterEmail: 'sarah@example.com',
   },
 };
 
@@ -32,5 +33,6 @@ export const Editor: Story = {
     collectionName: 'Kitchen Appliances',
     color: '#4f9a7e',
     role: 'editor',
+    inviterEmail: 'alex@example.com',
   },
 };

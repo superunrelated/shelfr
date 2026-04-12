@@ -130,6 +130,7 @@ Deno.serve(async (req) => {
           email: email.toLowerCase(),
           role,
           invited_by: inviter.id,
+          invited_by_email: inviter.email,
         },
         { onConflict: 'collection_id,user_id' }
       )

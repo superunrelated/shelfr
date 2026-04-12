@@ -4,6 +4,7 @@ interface InvitationCardProps {
   collectionName: string;
   color: string;
   role: 'viewer' | 'editor';
+  inviterEmail?: string;
   onAccept: () => void;
   onDecline: () => void;
 }
@@ -12,6 +13,7 @@ export function InvitationCard({
   collectionName,
   color,
   role,
+  inviterEmail,
   onAccept,
   onDecline,
 }: InvitationCardProps) {
@@ -21,7 +23,7 @@ export function InvitationCard({
         <RiGroupLine size={32} className="text-neutral-200" />
       </div>
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-1">
           <span
             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ background: color }}
@@ -30,8 +32,13 @@ export function InvitationCard({
             {collectionName}
           </p>
         </div>
-        <p className="text-[11px] text-neutral-400 mb-3">Invited as {role}</p>
-        <div className="flex gap-2">
+        <p className="text-[11px] text-neutral-400 mb-1">Invited as {role}</p>
+        {inviterEmail && (
+          <p className="text-[11px] text-neutral-400 mb-2 truncate">
+            from {inviterEmail}
+          </p>
+        )}
+        <div className="flex gap-2 mt-2">
           <button
             onClick={onAccept}
             className="flex-1 text-[11px] font-medium py-1.5 rounded bg-[#1c1e2a] text-white hover:bg-[#2a2d3d] transition-colors"
