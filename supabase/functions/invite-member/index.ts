@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -63,7 +64,31 @@ Deno.serve(async (req) => {
     const {
       data: { user: inviter },
     } = await userClient.auth.getUser();
-    if (!inviter || collection.user_id !== inviter.id) {
+    if (!inviter) {
+      return new Response(JSON.stringify({ error: 'Invalid auth' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 10 invites per 10 minutes per user
+    const { ok } = await checkRateLimit({
+      userId: inviter.id,
+      action: 'invite',
+      windowMinutes: 10,
+      maxRequests: 10,
+    });
+    if (!ok) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Try again shortly.' }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (collection.user_id !== inviter.id) {
       return new Response(
         JSON.stringify({
           error: 'Only the collection owner can invite members',

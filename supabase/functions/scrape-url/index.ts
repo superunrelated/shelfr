@@ -3,6 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.0';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
 const ALLOWED_ORIGINS = [
   'http://localhost:4200',
@@ -488,6 +489,34 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return jsonResponse(req, { error: 'Missing auth' }, 401);
+    }
+
+    // Resolve user for rate limiting
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const {
+      data: { user },
+    } = await userClient.auth.getUser();
+    if (!user) {
+      return jsonResponse(req, { error: 'Invalid auth' }, 401);
+    }
+
+    // 30 scrapes per 10 minutes per user
+    const { ok } = await checkRateLimit({
+      userId: user.id,
+      action: 'scrape',
+      windowMinutes: 10,
+      maxRequests: 30,
+    });
+    if (!ok) {
+      return jsonResponse(
+        req,
+        { error: 'Rate limit exceeded. Try again shortly.' },
+        429
+      );
     }
 
     const { url } = await req.json();

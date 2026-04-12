@@ -75,16 +75,6 @@ The web app deploys to GitHub Pages automatically on push to `main` via GitHub A
 
 **Setup:** In repo Settings > Pages, set Source to "GitHub Actions". Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets.
 
-## TODO — Security Hardening
-
-- [x] ~~Sanitize the `?redirect` parameter in `apps/web/index.html`~~
-- [ ] Add rate limiting to Edge Functions (scrape-url, invite-member)
-- [x] ~~Add a Content Security Policy meta tag to `apps/web/index.html`~~
-- [x] ~~Harden SSRF checks in scrape-url~~
-- [x] ~~Add file size and MIME type validation in `libs/shared/src/storage.ts`~~
-- [x] ~~Remove `referer` header fallback from CORS check in `supabase/functions/_shared/cors.ts`~~
-- [x] ~~Strip verbose `console.log` statements from `supabase/functions/scrape-url/index.ts`~~
-
 ## Future Enhancements
 
 - **Automated price tracking** — Supabase cron job for periodic re-scraping + price drop notifications
