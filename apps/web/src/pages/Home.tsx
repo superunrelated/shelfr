@@ -24,12 +24,16 @@ import { CollectionHeader } from '../components/CollectionHeader';
 import { CollectionToolbar } from '../components/CollectionToolbar';
 import { CompareTable } from '../components/CompareTable';
 import { ShopsTab } from '../components/ShopsTab';
+import { ShareModal } from '../components/ShareModal';
+import { useCollectionMembers } from '../hooks/useCollectionMembers';
 import {
   sortProducts,
   groupByStatus,
   COLLECTION_COLORS,
 } from '../utils/productSort';
 import type { SortKey, SortDir, ViewMode } from '../utils/productSort';
+
+const noop = () => undefined;
 
 // ── Main page ──
 
@@ -54,6 +58,14 @@ export function HomePage() {
     remove: removeProduct,
     clearError: clearProductsError,
   } = useProducts(activeColId);
+  const {
+    members,
+    loading: membersLoading,
+    invite: inviteMember,
+    remove: removeMember,
+    updateRole: updateMemberRole,
+    myRole,
+  } = useCollectionMembers(activeColId);
   const { shops, create: createShop } = useShops(activeColId);
 
   // Collection cover images
@@ -89,6 +101,7 @@ export function HomePage() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showWinnersOnly, setShowWinnersOnly] = useState(false);
@@ -123,6 +136,10 @@ export function HomePage() {
     () => collections.find((c) => c.id === activeColId),
     [collections, activeColId]
   );
+  const isOwner = activeCol?.user_id === user?.id;
+  const isViewer = !isOwner && myRole === 'viewer';
+  const canEdit = isOwner || myRole === 'editor';
+
   const selected = useMemo(
     () => products.find((p) => p.id === selectedId) ?? null,
     [products, selectedId]
@@ -436,8 +453,10 @@ export function HomePage() {
         compareSelected={compareIds.has(p.id)}
         onClick={(e) => handleCardClick(e, p)}
         onSelect={() => selectProduct(p.id)}
-        onRate={(r) => updateProduct(p.id, { rating: r })}
-        onToggleArchive={() => updateProduct(p.id, { archived: !p.archived })}
+        onRate={canEdit ? (r) => updateProduct(p.id, { rating: r }) : noop}
+        onToggleArchive={
+          canEdit ? () => updateProduct(p.id, { archived: !p.archived }) : noop
+        }
       />
     );
   }
@@ -453,8 +472,10 @@ export function HomePage() {
         compareSelected={compareIds.has(p.id)}
         onClick={(e) => handleCardClick(e, p)}
         onSelect={() => selectProduct(p.id)}
-        onRate={(r) => updateProduct(p.id, { rating: r })}
-        onToggleArchive={() => updateProduct(p.id, { archived: !p.archived })}
+        onRate={canEdit ? (r) => updateProduct(p.id, { rating: r }) : noop}
+        onToggleArchive={
+          canEdit ? () => updateProduct(p.id, { archived: !p.archived }) : noop
+        }
       />
     );
   }
@@ -469,6 +490,7 @@ export function HomePage() {
     <div className="flex h-screen overflow-hidden bg-neutral-50 antialiased text-sm">
       <Sidebar
         collections={collections}
+        currentUserId={user?.id ?? ''}
         activeColId={activeColId}
         userEmail={user?.email ?? ''}
         open={sidebarOpen}
@@ -515,6 +537,9 @@ export function HomePage() {
           <>
             <CollectionHeader
               collection={activeCol}
+              isOwner={isOwner}
+              isViewer={isViewer}
+              memberCount={members.length}
               compareMode={compareMode}
               compareCount={compareIds.size}
               onOpenSidebar={() => setSidebarOpen(true)}
@@ -530,6 +555,7 @@ export function HomePage() {
                 setCompareIds(new Set());
                 setShowCompare(false);
               }}
+              onShare={() => setShowShareModal(true)}
             />
 
             <CollectionToolbar
@@ -697,6 +723,7 @@ export function HomePage() {
               {selected && !compareMode && tab === 'products' && (
                 <ProductDrawer
                   product={selected}
+                  readOnly={isViewer}
                   onUpdate={updateProduct}
                   onArchive={() => {
                     updateProduct(selected.id, {
@@ -729,7 +756,19 @@ export function HomePage() {
               />
             )}
 
-            {tab === 'products' && (
+            {showShareModal && activeCol && (
+              <ShareModal
+                collectionName={activeCol.name}
+                members={members}
+                loading={membersLoading}
+                onInvite={inviteMember}
+                onRemove={removeMember}
+                onUpdateRole={updateMemberRole}
+                onClose={() => setShowShareModal(false)}
+              />
+            )}
+
+            {tab === 'products' && canEdit && (
               <AddProductBar
                 urlInput={urlInput}
                 onUrlChange={setUrlInput}

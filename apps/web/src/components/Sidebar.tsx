@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiAddLine, RiLogoutBoxRLine, RiDeleteBinLine } from '@remixicon/react';
+import {
+  RiAddLine,
+  RiLogoutBoxRLine,
+  RiDeleteBinLine,
+  RiGroupLine,
+} from '@remixicon/react';
 import { Button, Logo, Avatar } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
 
 interface SidebarProps {
   collections: Collection[];
+  currentUserId: string;
   activeColId: string | null;
   userEmail: string;
   open: boolean;
@@ -19,6 +25,7 @@ interface SidebarProps {
 
 export function Sidebar({
   collections,
+  currentUserId,
   activeColId,
   userEmail,
   open,
@@ -73,17 +80,25 @@ export function Sidebar({
                   style={{ background: c.color }}
                 />
                 <span className="flex-1 truncate">{c.name}</span>
+                {c.user_id !== currentUserId && (
+                  <RiGroupLine
+                    size={12}
+                    className="text-neutral-600 flex-shrink-0"
+                  />
+                )}
               </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteCollection(c.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-red-400 transition-all"
-                title="Delete collection"
-              >
-                <RiDeleteBinLine size={13} />
-              </button>
+              {c.user_id === currentUserId && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteCollection(c.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-red-400 transition-all"
+                  title="Delete collection"
+                >
+                  <RiDeleteBinLine size={13} />
+                </button>
+              )}
             </div>
           ))}
           {collections.length === 0 && (

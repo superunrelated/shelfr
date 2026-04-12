@@ -14,6 +14,7 @@ import { useDebouncedUpdate } from '../hooks/useDebouncedUpdate';
 
 interface ProductDrawerProps {
   product: Product;
+  readOnly?: boolean;
   onUpdate: (id: string, changes: Partial<Product>) => void;
   onArchive: () => void;
   onDelete: () => void;
@@ -24,6 +25,7 @@ interface ProductDrawerProps {
 
 export function ProductDrawer({
   product,
+  readOnly = false,
   onUpdate,
   onArchive,
   onDelete,
@@ -152,7 +154,8 @@ export function ProductDrawer({
               id="drawer-title"
               value={dTitle}
               onChange={(e) => setDTitle(e.target.value)}
-              className="text-base font-semibold text-[#1c1e2a] leading-snug font-serif w-full bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-neutral-400 focus:outline-none transition-colors pb-0.5"
+              readOnly={readOnly}
+              className={`text-base font-semibold text-[#1c1e2a] leading-snug font-serif w-full bg-transparent border-b border-transparent focus:outline-none transition-colors pb-0.5 ${readOnly ? '' : 'hover:border-neutral-200 focus:border-neutral-400'}`}
               placeholder="Product name"
             />
           </div>
@@ -234,18 +237,24 @@ export function ProductDrawer({
             <StarRating
               rating={product.rating}
               size={16}
-              onRate={(r) => onUpdate(product.id, { rating: r })}
+              onRate={
+                readOnly
+                  ? undefined
+                  : (r) => onUpdate(product.id, { rating: r })
+              }
             />
           </div>
 
           {/* Status */}
-          <div>
-            <SectionLabel>Status</SectionLabel>
-            <StatusPicker
-              value={product.status as ProductStatus}
-              onChange={(s) => onUpdate(product.id, { status: s })}
-            />
-          </div>
+          {!readOnly && (
+            <div>
+              <SectionLabel>Status</SectionLabel>
+              <StatusPicker
+                value={product.status as ProductStatus}
+                onChange={(s) => onUpdate(product.id, { status: s })}
+              />
+            </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -259,7 +268,10 @@ export function ProductDrawer({
               id="drawer-notes"
               value={dNotes}
               onChange={(e) => setDNotes(e.target.value)}
-              placeholder="What do you think about this one?..."
+              readOnly={readOnly}
+              placeholder={
+                readOnly ? 'No notes' : 'What do you think about this one?...'
+              }
               className="w-full text-xs border border-neutral-200 rounded p-2.5 bg-white resize-none focus:outline-none focus:border-neutral-400 leading-relaxed min-h-16"
               rows={2}
             />
@@ -292,21 +304,25 @@ export function ProductDrawer({
               />
             </button>
           )}
-          <div className="w-px h-5 bg-neutral-200" />
-          <button
-            onClick={onArchive}
-            title={product.archived ? 'Unarchive' : 'Archive'}
-            className="p-3 md:p-2 rounded text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-          >
-            <RiArchiveLine size={18} />
-          </button>
-          <button
-            onClick={onDelete}
-            title="Delete permanently"
-            className="p-3 md:p-2 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <RiDeleteBinLine size={18} />
-          </button>
+          {!readOnly && (
+            <>
+              <div className="w-px h-5 bg-neutral-200" />
+              <button
+                onClick={onArchive}
+                title={product.archived ? 'Unarchive' : 'Archive'}
+                className="p-3 md:p-2 rounded text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+              >
+                <RiArchiveLine size={18} />
+              </button>
+              <button
+                onClick={onDelete}
+                title="Delete permanently"
+                className="p-3 md:p-2 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <RiDeleteBinLine size={18} />
+              </button>
+            </>
+          )}
         </div>
       </aside>
     </>
