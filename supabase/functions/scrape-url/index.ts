@@ -264,8 +264,6 @@ function decodeHTMLEntities(str: string): string {
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    const origin = req.headers.get('origin');
-    console.warn(`[cors] OPTIONS preflight origin="${origin}"`);
     return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
