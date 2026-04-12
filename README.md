@@ -38,7 +38,6 @@ libs/
 supabase/
   migrations/       # SQL schema migrations
   functions/        # Edge functions (scrape-url)
-docs/               # Architecture, features, phases, decisions
 ```
 
 ## Local development
@@ -76,14 +75,10 @@ The web app deploys to GitHub Pages automatically on push to `main` via GitHub A
 
 **Setup:** In repo Settings > Pages, set Source to "GitHub Actions". Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets.
 
-## Documentation
+## Future Enhancements
 
-See the [docs/](docs/) directory for detailed documentation:
-
-- [Overview](docs/OVERVIEW.md) - Vision, target users, tech stack
-- [Architecture](docs/ARCHITECTURE.md) - Monorepo structure, design system, data flow
-- [Database](docs/DATABASE.md) - Schema, RLS policies, migrations
-- [Features](docs/FEATURES.md) - Feature specifications
-- [Phases](docs/PHASES.md) - Implementation roadmap
-- [Decisions](docs/DECISIONS.md) - Technical decision log
-- [Setup](docs/SETUP.md) - Environment and deployment details
+- **Automated price tracking** — Supabase cron job for periodic re-scraping + price drop notifications
+- **Tags within collections** — Filter by tags like `#fabric`, `#under-$1500`
+- **Shop deduplication indicators** — "Also from [Shop]" when multiple products share a retailer
+- **Image storage** — Supabase Storage for image resilience (currently URL-only)
+- **Export** — Export collection as shareable link or PDF
