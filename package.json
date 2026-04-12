@@ -10,7 +10,7 @@
     "zip:extension": "nx build extension && cd dist/extension && zip -r ../../shelfr-extension.zip . && echo 'Created shelfr-extension.zip'",
     "dev:extension": "nx dev extension",
     "dev": "nx serve web",
-    "deploy:functions": "npx supabase functions deploy scrape-url --project-ref juimdgzjknasimubewhp --no-verify-jwt",
+    "deploy:functions": "npx supabase functions deploy scrape-url --project-ref juimdgzjknasimubewhp --no-verify-jwt && npx supabase functions deploy invite-member --project-ref juimdgzjknasimubewhp --no-verify-jwt",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "nx run-many --target=lint --all",
