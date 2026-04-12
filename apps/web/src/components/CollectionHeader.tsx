@@ -56,11 +56,6 @@ export function CollectionHeader({
       )}
       {!compareMode ? (
         <>
-          {!isOwner && (
-            <Button variant="secondary" onClick={onLeave}>
-              <RiLogoutBoxRLine size={14} /> Leave
-            </Button>
-          )}
           {isOwner && (
             <Button variant="secondary" onClick={onShare}>
               <RiShareLine size={14} />
@@ -75,6 +70,11 @@ export function CollectionHeader({
           {!isViewer && (
             <Button variant="secondary" onClick={onStartCompare}>
               <RiScalesLine size={14} /> Compare
+            </Button>
+          )}
+          {!isOwner && (
+            <Button variant="secondary" onClick={onLeave}>
+              <RiLogoutBoxRLine size={14} /> Leave
             </Button>
           )}
         </>

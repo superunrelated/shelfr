@@ -36,8 +36,10 @@ export function NotificationBell({
 
   function handleNotificationClick(n: Notification) {
     if (!n.read) onMarkAsRead(n.id);
-    if (n.link) {
-      navigate(n.link);
+    // Invite notifications go to collections overview (must accept first)
+    const target = n.type === 'invite' ? '/collections' : n.link;
+    if (target) {
+      navigate(target);
       setOpen(false);
     }
   }

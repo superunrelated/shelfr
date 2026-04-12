@@ -66,6 +66,19 @@ export function useNotifications() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }
 
+  async function dismissByType(type: string, link: string) {
+    if (!user) return;
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('type', type)
+      .eq('link', link);
+    setNotifications((prev) =>
+      prev.filter((n) => !(n.type === type && n.link === link))
+    );
+  }
+
   return {
     notifications,
     loading,
@@ -73,6 +86,7 @@ export function useNotifications() {
     markAsRead,
     markAllRead,
     dismiss,
+    dismissByType,
     refetch: fetch,
   };
 }

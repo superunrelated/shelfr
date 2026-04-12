@@ -115,6 +115,7 @@ export function HomePage() {
     markAsRead,
     markAllRead,
     dismiss: dismissNotification,
+    dismissByType,
   } = useNotifications();
 
   // Collection cover images
@@ -187,15 +188,23 @@ export function HomePage() {
     'name'
   );
 
+  // Track collections hidden optimistically (declined/left) until refetch clears them
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  // Clear hidden IDs when collections refetch (the DB result is now authoritative)
+  useEffect(() => {
+    setHiddenIds(new Set());
+  }, [collections]);
+
   // ── Derived data ──
-  // Collections minus pending invitations — used everywhere except the invitations section
+  // Collections minus pending invitations and optimistically hidden ones
   const pendingIds = useMemo(
     () => new Set(invitations.map((inv) => inv.collection_id)),
     [invitations]
   );
   const acceptedCollections = useMemo(
-    () => collections.filter((c) => !pendingIds.has(c.id)),
-    [collections, pendingIds]
+    () =>
+      collections.filter((c) => !pendingIds.has(c.id) && !hiddenIds.has(c.id)),
+    [collections, pendingIds, hiddenIds]
   );
 
   const activeCol = useMemo(
@@ -631,12 +640,25 @@ export function HomePage() {
               archiveCollection(id, archived)
             }
             onAcceptInvite={async (memberId) => {
+              const inv = invitations.find((i) => i.id === memberId);
+              const col =
+                inv && collections.find((c) => c.id === inv.collection_id);
               await acceptInvite(memberId);
+              if (col)
+                await dismissByType('invite', `/collections/${col.slug}`);
               await refetchCollections();
               toast('Invitation accepted', 'success');
             }}
             onDeclineInvite={async (memberId) => {
+              const inv = invitations.find((i) => i.id === memberId);
+              const col =
+                inv && collections.find((c) => c.id === inv.collection_id);
+              // Hide immediately so it never flashes in "Shared with me"
+              if (inv)
+                setHiddenIds((prev) => new Set([...prev, inv.collection_id]));
               await declineInvite(memberId);
+              if (col)
+                await dismissByType('invite', `/collections/${col.slug}`);
               await refetchCollections();
               toast('Invitation declined', 'info');
             }}

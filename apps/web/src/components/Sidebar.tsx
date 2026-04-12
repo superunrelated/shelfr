@@ -43,6 +43,11 @@ export function Sidebar({
   const [showNewCol, setShowNewCol] = useState(false);
   const [newColName, setNewColName] = useState('');
 
+  const owned = collections.filter(
+    (c) => c.user_id === currentUserId && !c.archived
+  );
+  const shared = collections.filter((c) => c.user_id !== currentUserId);
+
   function handleCreate() {
     if (!newColName.trim()) return;
     onCreateCollection(newColName.trim());
@@ -70,48 +75,38 @@ export function Sidebar({
             onClick={onNavigateHome}
             className="px-6 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium hover:text-neutral-300 transition-colors"
           >
-            Collections
+            My collections
           </button>
-          {collections.map((c) => (
-            <div
+          {owned.map((c) => (
+            <SidebarItem
               key={c.id}
-              className={`group flex items-center transition-all duration-150 ${activeColId === c.id ? 'text-white bg-white/8' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'}`}
-            >
-              <button
-                onClick={() => onSwitchCollection(c.id)}
-                aria-current={activeColId === c.id ? 'page' : undefined}
-                className="flex-1 flex items-center gap-3 px-6 py-2 text-left text-[13px]"
-              >
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: c.color }}
-                />
-                <span className="flex-1 truncate">{c.name}</span>
-                {c.user_id !== currentUserId && (
-                  <RiGroupLine
-                    size={12}
-                    className="text-neutral-600 flex-shrink-0"
-                  />
-                )}
-              </button>
-              {c.user_id === currentUserId && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteCollection(c.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-red-400 transition-all"
-                  title="Delete collection"
-                >
-                  <RiDeleteBinLine size={13} />
-                </button>
-              )}
-            </div>
+              collection={c}
+              active={activeColId === c.id}
+              shared={false}
+              onSwitch={() => onSwitchCollection(c.id)}
+              onDelete={() => onDeleteCollection(c.id)}
+            />
           ))}
-          {collections.length === 0 && (
-            <p className="px-6 py-6 text-xs text-neutral-600">
+          {owned.length === 0 && (
+            <p className="px-6 py-4 text-xs text-neutral-600">
               No collections yet.
             </p>
+          )}
+          {shared.length > 0 && (
+            <>
+              <p className="px-6 pt-4 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium">
+                Shared with me
+              </p>
+              {shared.map((c) => (
+                <SidebarItem
+                  key={c.id}
+                  collection={c}
+                  active={activeColId === c.id}
+                  shared
+                  onSwitch={() => onSwitchCollection(c.id)}
+                />
+              ))}
+            </>
           )}
         </nav>
 
@@ -180,5 +175,52 @@ export function Sidebar({
         </div>
       </aside>
     </>
+  );
+}
+
+function SidebarItem({
+  collection: c,
+  active,
+  shared,
+  onSwitch,
+  onDelete,
+}: {
+  collection: Collection;
+  active: boolean;
+  shared: boolean;
+  onSwitch: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <div
+      className={`group flex items-center transition-all duration-150 ${active ? 'text-white bg-white/8' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'}`}
+    >
+      <button
+        onClick={onSwitch}
+        aria-current={active ? 'page' : undefined}
+        className="flex-1 flex items-center gap-3 px-6 py-2 text-left text-[13px]"
+      >
+        <span
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{ background: c.color }}
+        />
+        <span className="flex-1 truncate">{c.name}</span>
+        {shared && (
+          <RiGroupLine size={12} className="text-neutral-600 flex-shrink-0" />
+        )}
+      </button>
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-red-400 transition-all"
+          title="Delete collection"
+        >
+          <RiDeleteBinLine size={13} />
+        </button>
+      )}
+    </div>
   );
 }
