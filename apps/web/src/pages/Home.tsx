@@ -644,8 +644,9 @@ export function HomePage() {
               const col =
                 inv && collections.find((c) => c.id === inv.collection_id);
               await acceptInvite(memberId);
-              if (col)
+              if (col) {
                 await dismissByType('invite', `/collections/${col.slug}`);
+              }
               await refetchCollections();
               toast('Invitation accepted', 'success');
             }}
@@ -654,11 +655,13 @@ export function HomePage() {
               const col =
                 inv && collections.find((c) => c.id === inv.collection_id);
               // Hide immediately so it never flashes in "Shared with me"
-              if (inv)
+              if (inv) {
                 setHiddenIds((prev) => new Set([...prev, inv.collection_id]));
+              }
               await declineInvite(memberId);
-              if (col)
+              if (col) {
                 await dismissByType('invite', `/collections/${col.slug}`);
+              }
               await refetchCollections();
               toast('Invitation declined', 'info');
             }}
@@ -670,6 +673,7 @@ export function HomePage() {
                 confirmLabel: 'Leave',
                 variant: 'danger',
                 onConfirm: async () => {
+                  setHiddenIds((prev) => new Set([...prev, collectionId]));
                   await supabase
                     .from('collection_members')
                     .delete()
@@ -681,6 +685,7 @@ export function HomePage() {
                 },
               });
             }}
+            onCreateCollection={handleCreateCollection}
             onOpenSidebar={() => setSidebarOpen(true)}
           />
         ) : (
@@ -715,6 +720,7 @@ export function HomePage() {
                   confirmLabel: 'Leave',
                   variant: 'danger',
                   onConfirm: async () => {
+                    setHiddenIds((prev) => new Set([...prev, activeColId]));
                     await supabase
                       .from('collection_members')
                       .delete()

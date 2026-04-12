@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   RiAddLine,
   RiLogoutBoxRLine,
   RiDeleteBinLine,
   RiGroupLine,
+  RiChromeLine,
 } from '@remixicon/react';
 import { Button, Logo, Avatar } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
@@ -42,6 +43,20 @@ export function Sidebar({
 }: SidebarProps) {
   const [showNewCol, setShowNewCol] = useState(false);
   const [newColName, setNewColName] = useState('');
+  const [extensionInstalled, setExtensionInstalled] = useState(true);
+
+  const isChrome =
+    /Chrome\/\d+/.test(navigator.userAgent) &&
+    !/Edg\//.test(navigator.userAgent);
+
+  useEffect(() => {
+    if (!isChrome) return;
+    const img = new Image();
+    img.onload = () => setExtensionInstalled(true);
+    img.onerror = () => setExtensionInstalled(false);
+    img.src =
+      'chrome-extension://aacpljgijhpobmfdjbhdipjjjakndaod/icons/icon-16.png';
+  }, [isChrome]);
 
   const owned = collections.filter(
     (c) => c.user_id === currentUserId && !c.archived
@@ -94,9 +109,12 @@ export function Sidebar({
           )}
           {shared.length > 0 && (
             <>
-              <p className="px-6 pt-4 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium">
+              <button
+                onClick={onNavigateHome}
+                className="px-6 pt-4 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium hover:text-neutral-300 transition-colors"
+              >
                 Shared with me
-              </p>
+              </button>
               {shared.map((c) => (
                 <SidebarItem
                   key={c.id}
@@ -110,7 +128,7 @@ export function Sidebar({
           )}
         </nav>
 
-        <div className="p-4 border-t border-neutral-700">
+        <div className="p-4 space-y-2 border-t border-neutral-700">
           {showNewCol ? (
             <div className="flex flex-col gap-2">
               <input
@@ -143,6 +161,16 @@ export function Sidebar({
             >
               <RiAddLine size={14} /> New collection
             </button>
+          )}
+          {isChrome && !extensionInstalled && (
+            <a
+              href="https://chromewebstore.google.com/detail/shelfr/aacpljgijhpobmfdjbhdipjjjakndaod"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 text-xs text-neutral-500 border border-neutral-700 rounded hover:border-neutral-500 hover:text-neutral-300 transition-all flex items-center justify-center gap-1.5"
+            >
+              <RiChromeLine size={14} /> Get Chrome extension
+            </a>
           )}
         </div>
 
