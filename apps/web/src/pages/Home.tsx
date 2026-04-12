@@ -13,6 +13,7 @@ import {
   ProductListRow,
   TotalRow,
   ScrapePreviewModal,
+  ConfirmDialog,
 } from '@shelfr/ui';
 import { supabase, cleanUrl, extractDomain } from '@shelfr/shared';
 import type { Product } from '@shelfr/shared';
@@ -123,6 +124,13 @@ export function HomePage() {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    variant: 'danger' | 'default';
+    onConfirm: () => void;
+  } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showWinnersOnly, setShowWinnersOnly] = useState(false);
@@ -518,30 +526,36 @@ export function HomePage() {
         onSwitchCollection={switchCollection}
         onCreateCollection={handleCreateCollection}
         onDeleteCollection={(id) => {
-          if (!window.confirm('Delete this collection and all its products?')) {
-            return;
-          }
-          removeCollection(id);
-          if (activeColId === id) {
-            setActiveColId(null);
-            navigate('/c');
-          }
+          setConfirmAction({
+            title: 'Delete this collection?',
+            description:
+              'All products in this collection will be permanently deleted.',
+            confirmLabel: 'Delete collection',
+            variant: 'danger',
+            onConfirm: () => {
+              removeCollection(id);
+              if (activeColId === id) {
+                setActiveColId(null);
+                navigate('/c');
+              }
+              setConfirmAction(null);
+            },
+          });
         }}
         onSignOut={signOut}
-        onDeleteAccount={async () => {
-          if (
-            !window.confirm(
-              'Are you sure? This will permanently delete your account and all your data.'
-            )
-          ) {
-            return;
-          }
-          if (!window.confirm('This cannot be undone. Delete everything?')) {
-            return;
-          }
-          await supabase.rpc('delete_own_account');
-          await supabase.auth.signOut();
-          navigate('/');
+        onDeleteAccount={() => {
+          setConfirmAction({
+            title: 'Delete your account?',
+            description:
+              'This will permanently delete your account and all your data. This cannot be undone.',
+            confirmLabel: 'Delete everything',
+            variant: 'danger',
+            onConfirm: async () => {
+              await supabase.rpc('delete_own_account');
+              await supabase.auth.signOut();
+              navigate('/');
+            },
+          });
         }}
         onClose={() => setSidebarOpen(false)}
         notificationSlot={
@@ -762,10 +776,18 @@ export function HomePage() {
                     selectProduct(null);
                   }}
                   onDelete={() => {
-                    if (window.confirm('Delete this product permanently?')) {
-                      removeProduct(selected.id);
-                      selectProduct(null);
-                    }
+                    setConfirmAction({
+                      title: 'Delete this product?',
+                      description:
+                        'This will permanently remove it from the collection.',
+                      confirmLabel: 'Delete',
+                      variant: 'danger',
+                      onConfirm: () => {
+                        removeProduct(selected.id);
+                        selectProduct(null);
+                        setConfirmAction(null);
+                      },
+                    });
                   }}
                   onClose={() => selectProduct(null)}
                   onRescrape={handleRescrape}
@@ -783,6 +805,17 @@ export function HomePage() {
                 currentShopName={selected.shop_name}
                 onApply={applyScrapePreview}
                 onDismiss={() => setScrapePreview(null)}
+              />
+            )}
+
+            {confirmAction && (
+              <ConfirmDialog
+                title={confirmAction.title}
+                description={confirmAction.description}
+                confirmLabel={confirmAction.confirmLabel}
+                variant={confirmAction.variant}
+                onConfirm={confirmAction.onConfirm}
+                onCancel={() => setConfirmAction(null)}
               />
             )}
 

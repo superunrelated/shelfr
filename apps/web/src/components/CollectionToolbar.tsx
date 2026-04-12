@@ -59,28 +59,6 @@ export function CollectionToolbar({
           <t.Icon size={14} /> {t.label}
         </button>
       ))}
-      {tab === 'products' && !showCompare && (
-        <>
-          <div className="w-px h-5 bg-neutral-200 mx-3" />
-          <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mr-1">
-            Sort
-          </span>
-          {(['rating', 'price', 'status'] as SortKey[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => onSortClick(s)}
-              className={`text-[11px] px-2.5 py-1 rounded capitalize transition-all flex items-center gap-0.5 ${sortBy === s ? 'bg-[#1c1e2a] text-white font-medium' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
-            >
-              {s === 'rating' ? 'Stars' : s}
-              {sortBy === s && (
-                <span className="text-[9px] ml-0.5">
-                  {sortDir === 'desc' ? '↓' : '↑'}
-                </span>
-              )}
-            </button>
-          ))}
-        </>
-      )}
       <div className="flex-1" />
       {tab === 'products' && !showCompare && (
         <div className="flex items-center gap-3">
@@ -95,12 +73,28 @@ export function CollectionToolbar({
           {archivedCount > 0 && (
             <button
               onClick={onToggleArchived}
-              className={`text-[11px] flex items-center gap-1 transition-all ${showArchived ? 'text-[#1c1e2a] font-medium' : 'text-neutral-400 hover:text-neutral-600'}`}
+              title={showArchived ? 'Hide archived' : 'Show archived'}
+              className={`p-1.5 rounded border transition-all ${showArchived ? 'bg-[#1c1e2a] text-white border-[#1c1e2a]' : 'text-neutral-400 border-neutral-200 hover:text-neutral-600 hover:bg-neutral-100'}`}
             >
-              <RiArchiveLine size={13} /> {showArchived ? 'Hide' : 'Show'}{' '}
-              archived ({archivedCount})
+              <RiArchiveLine size={14} />
             </button>
           )}
+          <div className="flex items-center border border-neutral-200 rounded overflow-hidden">
+            {(['rating', 'price', 'status'] as SortKey[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => onSortClick(s)}
+                className={`text-[11px] px-2.5 py-[3px] capitalize transition-all flex items-center gap-0.5 ${sortBy === s ? 'bg-[#1c1e2a] text-white font-medium' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
+              >
+                {s === 'rating' ? 'Stars' : s}
+                {sortBy === s && (
+                  <span className="text-[9px] ml-0.5">
+                    {sortDir === 'desc' ? '↓' : '↑'}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center border border-neutral-200 rounded overflow-hidden">
             {[
               { key: 'big' as ViewMode, Icon: RiLayoutGridLine },

@@ -12,3 +12,4 @@ export { ProductGridCard } from './components/ProductGridCard';
 export { ProductListRow } from './components/ProductListRow';
 export { TotalRow } from './components/TotalRow';
 export { ScrapePreviewModal } from './components/ScrapePreviewModal';
+export { ConfirmDialog } from './components/ConfirmDialog';

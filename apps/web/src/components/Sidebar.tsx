@@ -75,7 +75,7 @@ export function Sidebar({
               <button
                 onClick={() => onSwitchCollection(c.id)}
                 aria-current={activeColId === c.id ? 'page' : undefined}
-                className="flex-1 flex items-center gap-3 px-6 py-3 text-left text-[13px]"
+                className="flex-1 flex items-center gap-3 px-6 py-2 text-left text-[13px]"
               >
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
