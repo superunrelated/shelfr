@@ -34,10 +34,10 @@ export function AddProductBar({
   onManualCancel,
 }: AddProductBarProps) {
   return (
-    <div className="bg-white border-t border-neutral-200/80 px-4 md:px-6 py-3 md:py-3.5 flex flex-col gap-2 flex-shrink-0 sticky bottom-0 z-20 pb-[max(env(safe-area-inset-bottom,0px),0.75rem)]">
+    <div className="bg-[#1c1e2a] border-t border-[#262838] px-4 md:px-6 py-3 md:py-3.5 flex flex-col gap-2 flex-shrink-0 sticky bottom-0 z-20 pb-[max(env(safe-area-inset-bottom,0px),0.75rem)]">
       {warning && (
         <div
-          className="flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 px-3 py-2 rounded"
+          className="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/50 px-3 py-2 rounded"
           role="alert"
         >
           <span className="flex-1">{warning}</span>
@@ -50,7 +50,7 @@ export function AddProductBar({
       {/* Manual entry fallback */}
       {manualEntry ? (
         <div className="flex flex-col gap-2">
-          <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">
+          <p className="text-[10px] text-neutral-500 uppercase tracking-wider font-medium">
             Add product details manually
           </p>
           <div className="flex gap-2">
@@ -61,7 +61,7 @@ export function AddProductBar({
               }
               placeholder="Product title"
               autoFocus
-              className="flex-[2] text-xs px-3.5 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400 transition-colors"
+              className="flex-[2] text-xs px-3.5 py-2.5 border border-[#2a2d3d] rounded bg-[#232536] text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-[#3d4055] transition-colors"
             />
             <input
               value={manualEntry.price}
@@ -70,7 +70,7 @@ export function AddProductBar({
               }
               placeholder="Price"
               type="number"
-              className="w-24 text-xs px-3.5 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400 transition-colors"
+              className="w-24 text-xs px-3.5 py-2.5 border border-[#2a2d3d] rounded bg-[#232536] text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-[#3d4055] transition-colors"
             />
             <input
               value={manualEntry.imageUrl}
@@ -78,7 +78,7 @@ export function AddProductBar({
                 onManualChange({ ...manualEntry, imageUrl: e.target.value })
               }
               placeholder="Image URL (optional)"
-              className="flex-[2] text-xs px-3.5 py-2.5 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400 transition-colors"
+              className="flex-[2] text-xs px-3.5 py-2.5 border border-[#2a2d3d] rounded bg-[#232536] text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-[#3d4055] transition-colors"
             />
           </div>
           <div className="flex gap-2">
@@ -95,8 +95,8 @@ export function AddProductBar({
         </div>
       ) : (
         <div className="flex gap-2.5">
-          <div className="flex-1 flex items-center gap-2.5 border border-neutral-200 rounded bg-neutral-50 px-4 focus-within:border-neutral-400 focus-within:bg-white transition-all">
-            <RiLink size={15} className="text-neutral-300 flex-shrink-0" />
+          <div className="flex-1 flex items-center gap-2.5 border border-[#2a2d3d] rounded bg-[#232536] px-4 focus-within:border-[#3d4055] focus-within:bg-[#232536] transition-all">
+            <RiLink size={15} className="text-neutral-500 flex-shrink-0" />
             <label className="sr-only" htmlFor="urlinput">
               Product URL
             </label>
@@ -106,7 +106,7 @@ export function AddProductBar({
               onChange={(e) => onUrlChange(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onAdd()}
               placeholder="Paste a product URL to add..."
-              className="flex-1 text-xs py-2.5 bg-transparent focus:outline-none text-neutral-700 placeholder:text-neutral-400"
+              className="flex-1 text-xs py-2.5 bg-transparent focus:outline-none text-neutral-200 placeholder:text-neutral-500"
             />
           </div>
           <Button onClick={onAdd} disabled={adding}>
