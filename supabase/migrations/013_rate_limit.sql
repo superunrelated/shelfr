@@ -20,3 +20,7 @@ $$;
 -- RLS: functions use the service-role key so RLS is bypassed,
 -- but enable it anyway so the anon/authenticated roles can't touch it.
 alter table rate_limit enable row level security;
+
+-- Schedule cleanup every 15 minutes
+create extension if not exists pg_cron;
+select cron.schedule('cleanup-rate-limit', '*/15 * * * *', 'select cleanup_rate_limit()');
