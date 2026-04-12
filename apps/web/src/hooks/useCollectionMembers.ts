@@ -1,16 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@shelfr/shared';
+import type { CollectionMember } from '@shelfr/shared';
 import { useAuth } from '../context/AuthContext';
 
-export interface CollectionMember {
-  id: string;
-  collection_id: string;
-  user_id: string;
-  role: 'viewer' | 'editor';
-  invited_by: string;
-  created_at: string;
-  email?: string;
-}
+export type { CollectionMember } from '@shelfr/shared';
 
 export function useCollectionMembers(collectionId: string | null) {
   const { user } = useAuth();
@@ -61,7 +54,6 @@ export function useCollectionMembers(collectionId: string | null) {
     );
   }
 
-  // Current user's role in this collection (null = owner or not a member)
   const myRole = members.find((m) => m.user_id === user?.id)?.role ?? null;
 
   return {
@@ -73,4 +65,41 @@ export function useCollectionMembers(collectionId: string | null) {
     myRole,
     refetch: fetch,
   };
+}
+
+/** Hook for the current user's pending invitations (across all collections) */
+export function useMyInvitations() {
+  const { user } = useAuth();
+  const [invitations, setInvitations] = useState<CollectionMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('collection_members')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('accepted', false);
+    setInvitations(data ?? []);
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  async function accept(memberId: string) {
+    await supabase
+      .from('collection_members')
+      .update({ accepted: true })
+      .eq('id', memberId);
+    setInvitations((prev) => prev.filter((m) => m.id !== memberId));
+  }
+
+  async function decline(memberId: string) {
+    await supabase.from('collection_members').delete().eq('id', memberId);
+    setInvitations((prev) => prev.filter((m) => m.id !== memberId));
+  }
+
+  return { invitations, loading, accept, decline, refetch: fetch };
 }

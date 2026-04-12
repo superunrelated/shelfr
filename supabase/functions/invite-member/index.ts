@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
         {
           collection_id,
           user_id: invitedUserId,
+          email: email.toLowerCase(),
           role,
           invited_by: inviter.id,
         },
@@ -148,7 +149,7 @@ Deno.serve(async (req) => {
       type: 'invite',
       title: `You've been invited to "${collection.name}"`,
       body: `${inviter.email} shared a collection with you as ${role}.`,
-      link: `/c/${collection.slug}`,
+      link: `/collections/${collection.slug}`,
     });
 
     return new Response(

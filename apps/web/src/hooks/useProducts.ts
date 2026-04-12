@@ -71,10 +71,6 @@ export function useProducts(
     }) {
       const newRecord = payload.new as Product;
       const oldRecord = payload.old as Product;
-      const isMe =
-        newRecord?.added_by === user?.id || newRecord?.user_id === user?.id;
-
-      if (isMe) return;
 
       if (payload.eventType === 'INSERT' && newRecord) {
         insertProduct(newRecord);

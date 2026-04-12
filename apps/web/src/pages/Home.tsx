@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
@@ -19,16 +19,14 @@ import { supabase, cleanUrl, extractDomain } from '@shelfr/shared';
 import type { Product } from '@shelfr/shared';
 import { RiShoppingBag3Line } from '@remixicon/react';
 import { Sidebar } from '../components/Sidebar';
-import { ProductDrawer } from '../components/ProductDrawer';
-import { AddProductBar } from '../components/AddProductBar';
 import { CollectionsGrid } from '../components/CollectionsGrid';
 import { CollectionHeader } from '../components/CollectionHeader';
 import { CollectionToolbar } from '../components/CollectionToolbar';
-import { CompareTable } from '../components/CompareTable';
-import { ShopsTab } from '../components/ShopsTab';
-import { ShareModal } from '../components/ShareModal';
 import { NotificationBell } from '../components/NotificationBell';
-import { useCollectionMembers } from '../hooks/useCollectionMembers';
+import {
+  useCollectionMembers,
+  useMyInvitations,
+} from '../hooks/useCollectionMembers';
 import { useNotifications } from '../hooks/useNotifications';
 import {
   sortProducts,
@@ -36,6 +34,28 @@ import {
   COLLECTION_COLORS,
 } from '../utils/productSort';
 import type { SortKey, SortDir, ViewMode } from '../utils/productSort';
+
+const ProductDrawer = lazy(() =>
+  import('../components/ProductDrawer').then((m) => ({
+    default: m.ProductDrawer,
+  }))
+);
+const AddProductBar = lazy(() =>
+  import('../components/AddProductBar').then((m) => ({
+    default: m.AddProductBar,
+  }))
+);
+const CompareTable = lazy(() =>
+  import('../components/CompareTable').then((m) => ({
+    default: m.CompareTable,
+  }))
+);
+const ShopsTab = lazy(() =>
+  import('../components/ShopsTab').then((m) => ({ default: m.ShopsTab }))
+);
+const ShareModal = lazy(() =>
+  import('../components/ShareModal').then((m) => ({ default: m.ShareModal }))
+);
 
 const noop = () => undefined;
 
@@ -52,7 +72,13 @@ export function HomePage() {
     collections,
     create: createCollection,
     remove: removeCollection,
+    archive: archiveCollection,
   } = useCollections();
+  const {
+    invitations,
+    accept: acceptInvite,
+    decline: declineInvite,
+  } = useMyInvitations();
   const [activeColId, setActiveColId] = useState<string | null>(null);
   const {
     products,
@@ -263,9 +289,14 @@ export function HomePage() {
     setSelectedId(id);
     setScrapePreview(null);
     if (activeCol) {
-      navigate(id ? `/c/${activeCol.slug}/${id}` : `/c/${activeCol.slug}`, {
-        replace: true,
-      });
+      navigate(
+        id
+          ? `/collections/${activeCol.slug}/${id}`
+          : `/collections/${activeCol.slug}`,
+        {
+          replace: true,
+        }
+      );
     }
   }
 
@@ -278,7 +309,7 @@ export function HomePage() {
     setShowCompare(false);
     setTab('products');
     setSidebarOpen(false);
-    if (col) navigate(`/c/${col.slug}`);
+    if (col) navigate(`/collections/${col.slug}`);
   }
 
   async function handleCreateCollection(name: string) {
@@ -287,7 +318,7 @@ export function HomePage() {
     const col = await createCollection(name, color);
     if (col) {
       setActiveColId(col.id);
-      navigate(`/c/${col.slug}`);
+      navigate(`/collections/${col.slug}`);
     }
   }
 
@@ -523,6 +554,11 @@ export function HomePage() {
         activeColId={activeColId}
         userEmail={user?.email ?? ''}
         open={sidebarOpen}
+        onNavigateHome={() => {
+          setActiveColId(null);
+          navigate('/collections');
+          setSidebarOpen(false);
+        }}
         onSwitchCollection={switchCollection}
         onCreateCollection={handleCreateCollection}
         onDeleteCollection={(id) => {
@@ -536,7 +572,7 @@ export function HomePage() {
               removeCollection(id);
               if (activeColId === id) {
                 setActiveColId(null);
-                navigate('/c');
+                navigate('/collections');
               }
               setConfirmAction(null);
             },
@@ -573,8 +609,42 @@ export function HomePage() {
         {!activeCol ? (
           <CollectionsGrid
             collections={collections}
+            currentUserId={user?.id ?? ''}
             collectionCovers={collectionCovers}
+            invitations={invitations}
+            invitationCollections={collections.filter((c) =>
+              invitations.some((inv) => inv.collection_id === c.id)
+            )}
             onSwitchCollection={switchCollection}
+            onArchiveCollection={(id, archived) =>
+              archiveCollection(id, archived)
+            }
+            onAcceptInvite={async (memberId) => {
+              await acceptInvite(memberId);
+              toast('Invitation accepted', 'success');
+            }}
+            onDeclineInvite={async (memberId) => {
+              await declineInvite(memberId);
+              toast('Invitation declined', 'info');
+            }}
+            onLeaveCollection={(collectionId) => {
+              setConfirmAction({
+                title: 'Leave this collection?',
+                description:
+                  'You will no longer have access to this collection.',
+                confirmLabel: 'Leave',
+                variant: 'danger',
+                onConfirm: async () => {
+                  await supabase
+                    .from('collection_members')
+                    .delete()
+                    .eq('collection_id', collectionId)
+                    .eq('user_id', user?.id);
+                  toast('Left collection', 'info');
+                  setConfirmAction(null);
+                },
+              });
+            }}
             onOpenSidebar={() => setSidebarOpen(true)}
           />
         ) : (
@@ -600,6 +670,27 @@ export function HomePage() {
                 setShowCompare(false);
               }}
               onShare={() => setShowShareModal(true)}
+              onLeave={() => {
+                if (!activeColId || !user) return;
+                setConfirmAction({
+                  title: 'Leave this collection?',
+                  description:
+                    'You will no longer have access to this collection.',
+                  confirmLabel: 'Leave',
+                  variant: 'danger',
+                  onConfirm: async () => {
+                    await supabase
+                      .from('collection_members')
+                      .delete()
+                      .eq('collection_id', activeColId)
+                      .eq('user_id', user.id);
+                    setActiveColId(null);
+                    navigate('/collections');
+                    toast('Left collection', 'info');
+                    setConfirmAction(null);
+                  },
+                });
+              }}
             />
 
             <CollectionToolbar
@@ -731,23 +822,27 @@ export function HomePage() {
 
                 {/* Compare table */}
                 {tab === 'products' && showCompare && (
-                  <CompareTable
-                    products={compareProducts}
-                    onBack={() => setShowCompare(false)}
-                    onPickWinner={(id) =>
-                      updateProduct(id, { status: 'winner' })
-                    }
-                  />
+                  <Suspense fallback={null}>
+                    <CompareTable
+                      products={compareProducts}
+                      onBack={() => setShowCompare(false)}
+                      onPickWinner={(id) =>
+                        updateProduct(id, { status: 'winner' })
+                      }
+                    />
+                  </Suspense>
                 )}
 
                 {/* Shops tab */}
                 {tab === 'shops' && (
-                  <ShopsTab
-                    shops={sortedShops}
-                    shopSortBy={shopSortBy}
-                    onShopSortChange={setShopSortBy}
-                    onAddShop={handleAddShop}
-                  />
+                  <Suspense fallback={null}>
+                    <ShopsTab
+                      shops={sortedShops}
+                      shopSortBy={shopSortBy}
+                      onShopSortChange={setShopSortBy}
+                      onAddShop={handleAddShop}
+                    />
+                  </Suspense>
                 )}
 
                 {/* Empty products */}
@@ -765,34 +860,36 @@ export function HomePage() {
 
               {/* Drawer */}
               {selected && !compareMode && tab === 'products' && (
-                <ProductDrawer
-                  product={selected}
-                  readOnly={isViewer}
-                  onUpdate={updateProduct}
-                  onArchive={() => {
-                    updateProduct(selected.id, {
-                      archived: !selected.archived,
-                    });
-                    selectProduct(null);
-                  }}
-                  onDelete={() => {
-                    setConfirmAction({
-                      title: 'Delete this product?',
-                      description:
-                        'This will permanently remove it from the collection.',
-                      confirmLabel: 'Delete',
-                      variant: 'danger',
-                      onConfirm: () => {
-                        removeProduct(selected.id);
-                        selectProduct(null);
-                        setConfirmAction(null);
-                      },
-                    });
-                  }}
-                  onClose={() => selectProduct(null)}
-                  onRescrape={handleRescrape}
-                  rescraping={rescraping}
-                />
+                <Suspense fallback={null}>
+                  <ProductDrawer
+                    product={selected}
+                    readOnly={isViewer}
+                    onUpdate={updateProduct}
+                    onArchive={() => {
+                      updateProduct(selected.id, {
+                        archived: !selected.archived,
+                      });
+                      selectProduct(null);
+                    }}
+                    onDelete={() => {
+                      setConfirmAction({
+                        title: 'Delete this product?',
+                        description:
+                          'This will permanently remove it from the collection.',
+                        confirmLabel: 'Delete',
+                        variant: 'danger',
+                        onConfirm: () => {
+                          removeProduct(selected.id);
+                          selectProduct(null);
+                          setConfirmAction(null);
+                        },
+                      });
+                    }}
+                    onClose={() => selectProduct(null)}
+                    onRescrape={handleRescrape}
+                    rescraping={rescraping}
+                  />
+                </Suspense>
               )}
             </div>
 
@@ -820,33 +917,37 @@ export function HomePage() {
             )}
 
             {showShareModal && activeCol && (
-              <ShareModal
-                collectionName={activeCol.name}
-                members={members}
-                loading={membersLoading}
-                onInvite={inviteMember}
-                onRemove={removeMember}
-                onUpdateRole={updateMemberRole}
-                onClose={() => setShowShareModal(false)}
-              />
+              <Suspense fallback={null}>
+                <ShareModal
+                  collectionName={activeCol.name}
+                  members={members}
+                  loading={membersLoading}
+                  onInvite={inviteMember}
+                  onRemove={removeMember}
+                  onUpdateRole={updateMemberRole}
+                  onClose={() => setShowShareModal(false)}
+                />
+              </Suspense>
             )}
 
             {tab === 'products' && canEdit && (
-              <AddProductBar
-                urlInput={urlInput}
-                onUrlChange={setUrlInput}
-                onAdd={handleAddProduct}
-                adding={adding}
-                warning={scrapeWarning}
-                onDismissWarning={() => setScrapeWarning('')}
-                manualEntry={manualEntry}
-                onManualChange={setManualEntry}
-                onManualSubmit={handleManualSubmit}
-                onManualCancel={() => {
-                  setManualEntry(null);
-                  setScrapeWarning('');
-                }}
-              />
+              <Suspense fallback={null}>
+                <AddProductBar
+                  urlInput={urlInput}
+                  onUrlChange={setUrlInput}
+                  onAdd={handleAddProduct}
+                  adding={adding}
+                  warning={scrapeWarning}
+                  onDismissWarning={() => setScrapeWarning('')}
+                  manualEntry={manualEntry}
+                  onManualChange={setManualEntry}
+                  onManualSubmit={handleManualSubmit}
+                  onManualCancel={() => {
+                    setManualEntry(null);
+                    setScrapeWarning('');
+                  }}
+                />
+              </Suspense>
             )}
           </>
         )}

@@ -31,7 +31,6 @@ export function useCollections() {
 
   async function create(name: string, color: string) {
     if (!user) return null;
-    // Handle slug collisions by appending a suffix
     const baseSlug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -67,6 +66,20 @@ export function useCollections() {
     setCollections((prev) => prev.filter((c) => c.id !== id));
   }
 
+  async function archive(id: string, archived: boolean) {
+    setCollections((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, archived } : c))
+    );
+    const { error: err } = await supabase
+      .from('collections')
+      .update({ archived })
+      .eq('id', id);
+    if (err) {
+      setError(err.message);
+      fetch();
+    }
+  }
+
   function clearError() {
     setError(null);
   }
@@ -77,6 +90,7 @@ export function useCollections() {
     error,
     create,
     remove,
+    archive,
     refetch: fetch,
     clearError,
   };

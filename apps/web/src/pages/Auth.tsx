@@ -12,7 +12,7 @@ export function AuthPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (user) return <Navigate to="/c" replace />;
+  if (user) return <Navigate to="/collections" replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

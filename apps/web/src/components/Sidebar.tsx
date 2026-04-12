@@ -15,6 +15,7 @@ interface SidebarProps {
   activeColId: string | null;
   userEmail: string;
   open: boolean;
+  onNavigateHome: () => void;
   onSwitchCollection: (id: string) => void;
   onCreateCollection: (name: string) => void;
   onDeleteCollection: (id: string) => void;
@@ -30,6 +31,7 @@ export function Sidebar({
   activeColId,
   userEmail,
   open,
+  onNavigateHome,
   onSwitchCollection,
   onCreateCollection,
   onDeleteCollection,
@@ -59,14 +61,17 @@ export function Sidebar({
       <aside
         className={`fixed md:static inset-y-0 left-0 z-30 w-60 bg-[#1c1e2a] flex flex-col transition-transform duration-200 ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
-        <div className="px-6 py-6">
+        <button className="px-6 py-6 text-left" onClick={onNavigateHome}>
           <Logo variant="light" />
-        </div>
+        </button>
 
         <nav className="flex-1 py-2 overflow-y-auto">
-          <p className="px-6 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium">
+          <button
+            onClick={onNavigateHome}
+            className="px-6 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium hover:text-neutral-300 transition-colors"
+          >
             Collections
-          </p>
+          </button>
           {collections.map((c) => (
             <div
               key={c.id}

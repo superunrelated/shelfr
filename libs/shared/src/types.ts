@@ -15,7 +15,19 @@ export interface Collection {
   slug: string;
   cover_image_url: string | null;
   color: string;
+  archived: boolean;
   created_at: string;
+}
+
+export interface CollectionMember {
+  id: string;
+  collection_id: string;
+  user_id: string;
+  role: 'viewer' | 'editor';
+  accepted: boolean;
+  invited_by: string;
+  created_at: string;
+  email?: string;
 }
 
 export interface Product {

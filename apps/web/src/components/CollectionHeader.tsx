@@ -3,6 +3,7 @@ import {
   RiScalesLine,
   RiShareLine,
   RiEyeLine,
+  RiLogoutBoxRLine,
 } from '@remixicon/react';
 import { Button } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
@@ -19,6 +20,7 @@ interface CollectionHeaderProps {
   onShowCompare: () => void;
   onCancelCompare: () => void;
   onShare: () => void;
+  onLeave: () => void;
 }
 
 export function CollectionHeader({
@@ -33,6 +35,7 @@ export function CollectionHeader({
   onShowCompare,
   onCancelCompare,
   onShare,
+  onLeave,
 }: CollectionHeaderProps) {
   return (
     <header className="bg-white border-b border-neutral-200/80 px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-4 flex-shrink-0">
@@ -53,6 +56,11 @@ export function CollectionHeader({
       )}
       {!compareMode ? (
         <>
+          {!isOwner && (
+            <Button variant="secondary" onClick={onLeave}>
+              <RiLogoutBoxRLine size={14} /> Leave
+            </Button>
+          )}
           {isOwner && (
             <Button variant="secondary" onClick={onShare}>
               <RiShareLine size={14} />
