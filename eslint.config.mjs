@@ -1,4 +1,5 @@
 import storybook from 'eslint-plugin-storybook';
+import sonarjs from 'eslint-plugin-sonarjs';
 import nx from '@nx/eslint-plugin';
 import tseslint from 'typescript-eslint';
 
@@ -81,6 +82,17 @@ export default tseslint.config(
     files: ['**/*.stories.ts', '**/*.stories.tsx'],
     rules: {
       '@typescript-eslint/no-empty-function': 'off',
+    },
+  },
+
+  // SonarJS — code smell & bug detection
+  sonarjs.configs.recommended,
+  {
+    rules: {
+      // Downgrade noisy rules to warnings
+      'sonarjs/no-duplicate-string': 'off', // Tailwind classes repeat by design
+      'sonarjs/cognitive-complexity': ['warn', 20],
+      'sonarjs/no-nested-conditional': 'warn',
     },
   },
 

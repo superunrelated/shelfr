@@ -30,6 +30,7 @@ const config: KnipConfig = {
         'eslint-plugin-jsx-a11y',
         'eslint-plugin-react',
         'eslint-plugin-react-hooks',
+        'eslint-plugin-sonarjs',
         // CLI tools not imported in source
         'supabase',
         'pg',

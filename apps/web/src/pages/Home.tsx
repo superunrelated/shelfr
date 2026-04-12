@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useProducts } from '../hooks/useProducts';
 import { useShops } from '../hooks/useShops';
-import { Badge, StarRating, EmptyState, SkeletonCard } from '@shelfr/ui';
+import { Badge, EmptyState, SkeletonCard } from '@shelfr/ui';
 import { supabase, cleanUrl, extractDomain } from '@shelfr/shared';
-import type { Product, ProductStatus } from '@shelfr/shared';
+import type { Product } from '@shelfr/shared';
+import { RiShoppingBag3Line } from '@remixicon/react';
 import { Sidebar } from '../components/Sidebar';
 import { ProductDrawer } from '../components/ProductDrawer';
 import { ScrapePreviewModal } from '../components/ScrapePreviewModal';
@@ -16,13 +17,9 @@ import { CollectionHeader } from '../components/CollectionHeader';
 import { CollectionToolbar } from '../components/CollectionToolbar';
 import { CompareTable } from '../components/CompareTable';
 import { ShopsTab } from '../components/ShopsTab';
-import {
-  RiCheckLine,
-  RiShoppingBag3Line,
-  RiArrowDownSLine,
-  RiImageLine,
-  RiArchiveLine,
-} from '@remixicon/react';
+import { ProductGridCard } from '../components/ProductGridCard';
+import { ProductListRow } from '../components/ProductListRow';
+import { TotalRow } from '../components/TotalRow';
 import {
   sortProducts,
   groupByStatus,
@@ -412,230 +409,47 @@ export function HomePage() {
     }
   }
 
-  // ── Card click handler ──
-  const handleCardClick = useCallback(
-    (e: React.MouseEvent, p: Product) => {
-      if (e.shiftKey && p.source_url) {
-        window.open(p.source_url, '_blank');
-        return;
-      }
-      compareMode ? toggleCompareId(p.id) : selectProduct(p.id);
-    },
-    [compareMode, activeCol]
-  );
+  function handleCardClick(e: React.MouseEvent, p: Product) {
+    if (e.shiftKey && p.source_url) {
+      window.open(p.source_url, '_blank');
+      return;
+    }
+    compareMode ? toggleCompareId(p.id) : selectProduct(p.id);
+  }
 
-  // ── Render card ──
-  const renderCard = useCallback(
-    (p: Product) => {
-      const isCompact = viewMode === 'compact';
-      return (
-        <div
-          key={p.id}
-          onClick={(e) => handleCardClick(e, p)}
-          tabIndex={0}
-          role="button"
-          onKeyDown={(e) => e.key === 'Enter' && selectProduct(p.id)}
-          className={`bg-white rounded overflow-hidden cursor-pointer relative transition-all duration-200 hover:-translate-y-0.5 group shadow-sm hover:shadow-md
-          ${p.archived ? 'opacity-50' : ''}
-          ${selectedId === p.id ? 'ring-2 ring-[#1c1e2a] shadow-lg' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
-          ${compareMode && compareIds.has(p.id) ? 'ring-2 ring-[#1c1e2a] shadow-lg' : ''}`}
-        >
-          {compareMode && (
-            <div
-              className={`absolute top-2 left-2 w-4 h-4 rounded-full flex items-center justify-center z-10 ${compareIds.has(p.id) ? 'bg-[#1c1e2a] text-white' : 'bg-white/90 border border-neutral-300 text-transparent'}`}
-            >
-              <RiCheckLine size={10} />
-            </div>
-          )}
-          {!compareMode && !isCompact && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                updateProduct(p.id, { archived: !p.archived });
-              }}
-              title={p.archived ? 'Unarchive' : 'Archive'}
-              className={`absolute top-3 right-3 z-10 p-1 rounded bg-white/80 backdrop-blur-sm transition-all ${p.archived ? 'text-amber-500 opacity-100' : 'text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-neutral-600'}`}
-            >
-              <RiArchiveLine size={14} />
-            </button>
-          )}
-          <div
-            className={`w-full bg-neutral-100 relative overflow-hidden ${isCompact ? 'aspect-square' : 'aspect-[4/3]'}`}
-          >
-            {p.image_url ? (
-              <img
-                src={p.image_url}
-                alt={p.title}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <RiImageLine
-                  size={isCompact ? 20 : 48}
-                  className="text-neutral-300"
-                />
-              </div>
-            )}
-            {!compareMode && !isCompact && (
-              <div className="absolute top-2.5 left-2.5 z-10 bg-white/80 backdrop-blur-sm rounded px-1 py-0.5">
-                <StarRating
-                  rating={p.rating}
-                  size={12}
-                  onRate={(r) => updateProduct(p.id, { rating: r })}
-                />
-              </div>
-            )}
-            {isCompact && p.status !== 'considering' && (
-              <div className="absolute bottom-1 right-1 z-10">
-                <Badge status={p.status as ProductStatus} />
-              </div>
-            )}
-          </div>
-          <div className={isCompact ? 'p-2' : 'p-5'}>
-            {!isCompact && (
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1">
-                {p.shop_name}
-              </p>
-            )}
-            <p
-              className={`font-medium leading-snug font-serif ${p.archived ? 'text-neutral-400 line-through' : 'text-[#1c1e2a]'} ${isCompact ? 'text-[11px] line-clamp-1 mb-1' : 'text-[15px] line-clamp-2 mb-2.5'}`}
-            >
-              {p.title}
-            </p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span
-                className={`font-semibold ${p.archived ? 'text-neutral-400' : 'text-[#1c1e2a]'} ${isCompact ? 'text-[12px]' : 'text-[17px]'}`}
-              >
-                ${Number(p.price).toLocaleString()}
-              </span>
-              {!isCompact && p.price < p.original_price && (
-                <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
-                  <RiArrowDownSLine size={11} />$
-                  {Number(p.original_price - p.price).toLocaleString()}
-                </span>
-              )}
-              {!isCompact && p.status !== 'considering' && (
-                <Badge status={p.status as ProductStatus} />
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    },
-    [viewMode, compareMode, compareIds, selectedId, handleCardClick]
-  );
-
-  // ── Render list row ──
-  const renderRow = useCallback(
-    (p: Product) => (
-      <div
+  function renderCard(p: Product) {
+    return (
+      <ProductGridCard
         key={p.id}
+        product={p}
+        viewMode={viewMode}
+        selected={selectedId === p.id}
+        compareMode={compareMode}
+        compareSelected={compareIds.has(p.id)}
         onClick={(e) => handleCardClick(e, p)}
-        tabIndex={0}
-        role="button"
-        onKeyDown={(e) => e.key === 'Enter' && selectProduct(p.id)}
-        className={`bg-white rounded overflow-hidden cursor-pointer flex items-center gap-4 shadow-sm hover:shadow-md transition-all
-        ${p.archived ? 'opacity-50' : ''}
-        ${selectedId === p.id ? 'ring-2 ring-[#1c1e2a]' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
-        ${compareMode && compareIds.has(p.id) ? 'ring-2 ring-[#1c1e2a]' : ''}`}
-      >
-        {compareMode && (
-          <div
-            className={`ml-4 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${compareIds.has(p.id) ? 'bg-[#1c1e2a] text-white' : 'border border-neutral-300 text-transparent'}`}
-          >
-            <RiCheckLine size={12} />
-          </div>
-        )}
-        <div className="w-16 h-16 bg-neutral-100 flex-shrink-0 overflow-hidden">
-          {p.image_url ? (
-            <img
-              src={p.image_url}
-              alt={p.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <RiImageLine size={20} className="text-neutral-300" />
-            </div>
-          )}
-        </div>
-        <div className="flex-1 py-3 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <p className="text-[13px] font-medium text-[#1c1e2a] truncate font-serif">
-              {p.title}
-            </p>
-            {sortBy !== 'status' && (
-              <Badge status={p.status as ProductStatus} showLabel />
-            )}
-          </div>
-          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
-            {p.shop_name}
-          </p>
-        </div>
-        <div className="w-24 flex-shrink-0 flex justify-center">
-          <StarRating
-            rating={p.rating}
-            size={12}
-            onRate={(r) => updateProduct(p.id, { rating: r })}
-          />
-        </div>
-        <div className="w-12 flex-shrink-0 text-center">
-          <span className="text-xs text-neutral-400">
-            &times;{p.quantity || 1}
-          </span>
-        </div>
-        <div className="w-24 flex-shrink-0 text-right">
-          <span
-            className={`text-[15px] font-semibold ${p.archived ? 'text-neutral-400 line-through' : 'text-[#1c1e2a]'}`}
-          >
-            ${Number(p.price).toLocaleString()}
-          </span>
-          {(p.quantity || 1) > 1 && (
-            <p className="text-[10px] text-neutral-400">
-              ${(Number(p.price) * (p.quantity || 1)).toLocaleString()}
-            </p>
-          )}
-        </div>
-        <div className="w-10 flex-shrink-0 flex justify-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              updateProduct(p.id, { archived: !p.archived });
-            }}
-            title={p.archived ? 'Unarchive' : 'Archive'}
-            className={`p-1 rounded hover:bg-neutral-100 transition-colors ${p.archived ? 'text-amber-500' : 'text-neutral-300 hover:text-neutral-500'}`}
-          >
-            <RiArchiveLine size={14} />
-          </button>
-        </div>
-      </div>
-    ),
-    [compareMode, compareIds, selectedId, sortBy, handleCardClick]
-  );
+        onSelect={() => selectProduct(p.id)}
+        onRate={(r) => updateProduct(p.id, { rating: r })}
+        onToggleArchive={() => updateProduct(p.id, { archived: !p.archived })}
+      />
+    );
+  }
 
-  const TotalRow = ({ items, label }: { items: Product[]; label: string }) => (
-    <div className="flex items-center gap-4 mt-1 bg-white rounded shadow-sm border-t-2 border-[#1c1e2a]">
-      <div className="w-16 flex-shrink-0" />
-      <div className="flex-1 py-3 min-w-0">
-        <p className="text-xs font-semibold text-[#1c1e2a]">
-          {label} &middot; {items.reduce((s, p) => s + (p.quantity || 1), 0)}{' '}
-          items
-        </p>
-      </div>
-      <div className="w-24 flex-shrink-0" />
-      <div className="w-12 flex-shrink-0" />
-      <div className="w-24 flex-shrink-0 text-right">
-        <span className="text-[17px] font-bold text-[#1c1e2a]">
-          $
-          {items
-            .reduce((s, p) => s + Number(p.price) * (p.quantity || 1), 0)
-            .toLocaleString()}
-        </span>
-      </div>
-      <div className="w-10 flex-shrink-0" />
-    </div>
-  );
+  function renderRow(p: Product) {
+    return (
+      <ProductListRow
+        key={p.id}
+        product={p}
+        sortBy={sortBy}
+        selected={selectedId === p.id}
+        compareMode={compareMode}
+        compareSelected={compareIds.has(p.id)}
+        onClick={(e) => handleCardClick(e, p)}
+        onSelect={() => selectProduct(p.id)}
+        onRate={(r) => updateProduct(p.id, { rating: r })}
+        onToggleArchive={() => updateProduct(p.id, { archived: !p.archived })}
+      />
+    );
+  }
 
   const gridCls =
     viewMode === 'big'
