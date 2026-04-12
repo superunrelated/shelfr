@@ -40,7 +40,8 @@ export function ProductGridCard({
       onKeyDown={(e) => e.key === 'Enter' && onSelect()}
       className={`bg-white rounded overflow-hidden cursor-pointer relative transition-all duration-200 hover:-translate-y-0.5 group shadow-sm hover:shadow-md
       ${p.archived ? 'opacity-50' : ''}
-      ${selected ? 'ring-2 ring-[#1c1e2a] shadow-lg' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
+      ${selected && 'ring-2 ring-[#1c1e2a] shadow-lg'}
+      ${!selected && p.status === 'winner' && !p.archived && 'ring-1 ring-amber-300/60'}
       ${compareMode && compareSelected ? 'ring-2 ring-[#1c1e2a] shadow-lg' : ''}`}
     >
       {compareMode && (

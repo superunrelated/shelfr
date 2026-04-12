@@ -185,16 +185,19 @@ export function HomePage() {
   }, [shops, shopProductCounts, shopSortBy]);
 
   // ── URL sync ──
+  // URL → state sync: only react to URL param changes, not state
   useEffect(() => {
     if (!collections.length || !urlSlug) return;
     const col = collections.find((c) => c.slug === urlSlug);
     if (col && col.id !== activeColId) setActiveColId(col.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlSlug, collections]);
 
   useEffect(() => {
     if (urlProductId && urlProductId !== selectedId) {
       setSelectedId(urlProductId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlProductId]);
 
   useEffect(() => {
@@ -202,6 +205,7 @@ export function HomePage() {
       const p = products.find((p) => p.id === urlProductId);
       if (p) setSelectedId(p.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, urlProductId]);
 
   // ── Actions ──

@@ -34,7 +34,8 @@ export function ProductListRow({
       onKeyDown={(e) => e.key === 'Enter' && onSelect()}
       className={`bg-white rounded overflow-hidden cursor-pointer flex items-center gap-4 shadow-sm hover:shadow-md transition-all
       ${p.archived ? 'opacity-50' : ''}
-      ${selected ? 'ring-2 ring-[#1c1e2a]' : p.status === 'winner' && !p.archived ? 'ring-1 ring-amber-300/60' : ''}
+      ${selected && 'ring-2 ring-[#1c1e2a]'}
+      ${!selected && p.status === 'winner' && !p.archived && 'ring-1 ring-amber-300/60'}
       ${compareMode && compareSelected ? 'ring-2 ring-[#1c1e2a]' : ''}`}
     >
       {compareMode && (

@@ -74,11 +74,11 @@ export function ShopsTab({
                   )}
                 </td>
                 <td className="py-3.5 px-5 text-neutral-500">
-                  {s._count > 0 ? (
-                    `${s._count} product${s._count !== 1 ? 's' : ''}`
-                  ) : (
+                  {s._count === 0 && (
                     <span className="text-neutral-300">--</span>
                   )}
+                  {s._count === 1 && '1 product'}
+                  {s._count > 1 && `${s._count} products`}
                 </td>
               </tr>
             ))}

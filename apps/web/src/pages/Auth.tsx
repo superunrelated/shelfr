@@ -94,11 +94,9 @@ export function AuthPage() {
             )}
 
             <Button type="submit" disabled={loading} fullWidth>
-              {loading
-                ? 'Please wait...'
-                : mode === 'signin'
-                  ? 'Sign in'
-                  : 'Create account'}
+              {loading && 'Please wait...'}
+              {!loading && mode === 'signin' && 'Sign in'}
+              {!loading && mode === 'signup' && 'Create account'}
             </Button>
           </form>
         </div>

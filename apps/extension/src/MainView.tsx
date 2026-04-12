@@ -11,6 +11,12 @@ interface MainViewProps {
 
 type AddState = 'idle' | 'adding' | 'success' | 'error';
 
+function buttonClass(state: AddState) {
+  if (state === 'success') return 'bg-emerald-600 text-white';
+  if (state === 'error') return 'bg-red-500 text-white';
+  return 'bg-[#1c1e2a] text-white hover:bg-[#2a2d3d] disabled:opacity-40 disabled:cursor-default';
+}
+
 export function MainView({ userId, onLogout }: MainViewProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -181,15 +187,17 @@ export function MainView({ userId, onLogout }: MainViewProps) {
         <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1.5 block">
           Save to collection
         </label>
-        {loading ? (
+        {loading && (
           <div className="text-xs text-neutral-400 py-2">
             Loading collections...
           </div>
-        ) : collections.length === 0 ? (
+        )}
+        {!loading && collections.length === 0 && (
           <div className="text-xs text-neutral-400 py-2">
             No collections yet. Create one in the Shelfr app first.
           </div>
-        ) : (
+        )}
+        {!loading && collections.length > 0 && (
           <div className="relative">
             <select
               value={selectedId ?? ''}
@@ -247,14 +255,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
           disabled={
             !selectedId || addState === 'adding' || isChromePage || !tabInfo
           }
-          className={`w-full py-2.5 rounded text-xs font-medium transition-all duration-150
-            ${
-              addState === 'success'
-                ? 'bg-emerald-600 text-white'
-                : addState === 'error'
-                  ? 'bg-red-500 text-white'
-                  : 'bg-[#1c1e2a] text-white hover:bg-[#2a2d3d] disabled:opacity-40 disabled:cursor-default'
-            }`}
+          className={`w-full py-2.5 rounded text-xs font-medium transition-all duration-150 ${buttonClass(addState)}`}
         >
           {addState === 'adding' && 'Saving...'}
           {addState === 'success' && 'Saved to shelf!'}
