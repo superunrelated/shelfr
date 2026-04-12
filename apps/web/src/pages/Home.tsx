@@ -188,6 +188,16 @@ export function HomePage() {
   );
 
   // ── Derived data ──
+  // Collections minus pending invitations — used everywhere except the invitations section
+  const pendingIds = useMemo(
+    () => new Set(invitations.map((inv) => inv.collection_id)),
+    [invitations]
+  );
+  const acceptedCollections = useMemo(
+    () => collections.filter((c) => !pendingIds.has(c.id)),
+    [collections, pendingIds]
+  );
+
   const activeCol = useMemo(
     () => collections.find((c) => c.id === activeColId),
     [collections, activeColId]
@@ -550,7 +560,7 @@ export function HomePage() {
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50 antialiased text-sm">
       <Sidebar
-        collections={collections}
+        collections={acceptedCollections}
         currentUserId={user?.id ?? ''}
         activeColId={activeColId}
         userEmail={user?.email ?? ''}
@@ -609,12 +619,12 @@ export function HomePage() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {!activeCol ? (
           <CollectionsGrid
-            collections={collections}
+            collections={acceptedCollections}
             currentUserId={user?.id ?? ''}
             collectionCovers={collectionCovers}
             invitations={invitations}
             invitationCollections={collections.filter((c) =>
-              invitations.some((inv) => inv.collection_id === c.id)
+              pendingIds.has(c.id)
             )}
             onSwitchCollection={switchCollection}
             onArchiveCollection={(id, archived) =>
@@ -627,6 +637,7 @@ export function HomePage() {
             }}
             onDeclineInvite={async (memberId) => {
               await declineInvite(memberId);
+              await refetchCollections();
               toast('Invitation declined', 'info');
             }}
             onLeaveCollection={(collectionId) => {

@@ -35,14 +35,8 @@ export function CollectionsGrid({
   const owned = collections.filter(
     (c) => c.user_id === currentUserId && !c.archived
   );
-  const pendingCollectionIds = new Set(
-    invitations.map((inv) => inv.collection_id)
-  );
   const shared = collections.filter(
-    (c) =>
-      c.user_id !== currentUserId &&
-      !c.archived &&
-      !pendingCollectionIds.has(c.id)
+    (c) => c.user_id !== currentUserId && !c.archived
   );
   const archived = collections.filter(
     (c) => c.user_id === currentUserId && c.archived

@@ -89,16 +89,26 @@ export function useMyInvitations() {
   }, [fetch]);
 
   async function accept(memberId: string) {
-    await supabase
+    const { error } = await supabase
       .from('collection_members')
       .update({ accepted: true })
       .eq('id', memberId);
-    setInvitations((prev) => prev.filter((m) => m.id !== memberId));
+    if (error) {
+      console.error('Failed to accept invite:', error.message);
+    }
+    // Always refetch to ensure consistency with DB
+    await fetch();
   }
 
   async function decline(memberId: string) {
-    await supabase.from('collection_members').delete().eq('id', memberId);
-    setInvitations((prev) => prev.filter((m) => m.id !== memberId));
+    const { error } = await supabase
+      .from('collection_members')
+      .delete()
+      .eq('id', memberId);
+    if (error) {
+      console.error('Failed to decline invite:', error.message);
+    }
+    await fetch();
   }
 
   return { invitations, loading, accept, decline, refetch: fetch };

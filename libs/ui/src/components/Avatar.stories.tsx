@@ -9,7 +9,7 @@ const meta: Meta<typeof Avatar> = {
 export default meta;
 type Story = StoryObj<typeof Avatar>;
 
-export const Default: Story = { args: { email: 'knut@example.com' } };
+export const Default: Story = { args: { email: 'foo@example.com' } };
 export const NoEmail: Story = { args: {} };
 export const Sizes: Story = {
   render: () => (
