@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useProducts } from '../hooks/useProducts';
 import { useShops } from '../hooks/useShops';
+import { useToast } from '../context/ToastContext';
 import {
   Badge,
   EmptyState,
@@ -43,6 +44,7 @@ export function HomePage() {
   const { user, signOut } = useAuth();
   const { slug: urlSlug, productId: urlProductId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Data hooks
   const {
@@ -59,7 +61,17 @@ export function HomePage() {
     update: updateProduct,
     remove: removeProduct,
     clearError: clearProductsError,
-  } = useProducts(activeColId);
+  } = useProducts(activeColId, {
+    onExternalChange: (event, product) => {
+      if (event === 'INSERT') {
+        toast(`${product.title} was added`, 'info');
+      } else if (event === 'UPDATE') {
+        toast(`${product.title} was updated`, 'info');
+      } else if (event === 'DELETE') {
+        toast(`${product.title} was removed`, 'info');
+      }
+    },
+  });
   const {
     members,
     loading: membersLoading,
