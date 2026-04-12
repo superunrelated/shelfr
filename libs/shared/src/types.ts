@@ -4,6 +4,10 @@ export type ProductStatus =
   | 'winner'
   | 'purchased';
 
+export type SortKey = 'rating' | 'price' | 'status';
+export type SortDir = 'asc' | 'desc';
+export type ViewMode = 'big' | 'compact' | 'list';
+
 export interface Collection {
   id: string;
   user_id: string;

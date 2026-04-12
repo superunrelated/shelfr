@@ -4,22 +4,26 @@ import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useProducts } from '../hooks/useProducts';
 import { useShops } from '../hooks/useShops';
-import { Badge, EmptyState, SkeletonCard } from '@shelfr/ui';
+import {
+  Badge,
+  EmptyState,
+  SkeletonCard,
+  ProductGridCard,
+  ProductListRow,
+  TotalRow,
+  ScrapePreviewModal,
+} from '@shelfr/ui';
 import { supabase, cleanUrl, extractDomain } from '@shelfr/shared';
 import type { Product } from '@shelfr/shared';
 import { RiShoppingBag3Line } from '@remixicon/react';
 import { Sidebar } from '../components/Sidebar';
 import { ProductDrawer } from '../components/ProductDrawer';
-import { ScrapePreviewModal } from '../components/ScrapePreviewModal';
 import { AddProductBar } from '../components/AddProductBar';
 import { CollectionsGrid } from '../components/CollectionsGrid';
 import { CollectionHeader } from '../components/CollectionHeader';
 import { CollectionToolbar } from '../components/CollectionToolbar';
 import { CompareTable } from '../components/CompareTable';
 import { ShopsTab } from '../components/ShopsTab';
-import { ProductGridCard } from '../components/ProductGridCard';
-import { ProductListRow } from '../components/ProductListRow';
-import { TotalRow } from '../components/TotalRow';
 import {
   sortProducts,
   groupByStatus,

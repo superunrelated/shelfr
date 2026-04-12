@@ -1,8 +1,5 @@
-import type { Product, ProductStatus } from '@shelfr/shared';
-
-export type SortKey = 'rating' | 'price' | 'status';
-export type SortDir = 'asc' | 'desc';
-export type ViewMode = 'big' | 'compact' | 'list';
+import type { Product, ProductStatus, SortKey, SortDir } from '@shelfr/shared';
+export type { SortKey, SortDir, ViewMode } from '@shelfr/shared';
 
 const STATUS_ORDER: Record<ProductStatus, number> = {
   purchased: 0,

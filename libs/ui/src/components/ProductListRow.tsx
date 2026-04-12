@@ -1,7 +1,7 @@
 import { RiCheckLine, RiImageLine, RiArchiveLine } from '@remixicon/react';
-import { Badge, StarRating } from '@shelfr/ui';
-import type { Product, ProductStatus } from '@shelfr/shared';
-import type { SortKey } from '../utils/productSort';
+import { Badge } from './Badge';
+import { StarRating } from './StarRating';
+import type { Product, ProductStatus, SortKey } from '@shelfr/shared';
 
 interface ProductListRowProps {
   product: Product;

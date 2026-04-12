@@ -4,9 +4,9 @@ import {
   RiImageLine,
   RiArchiveLine,
 } from '@remixicon/react';
-import { Badge, StarRating } from '@shelfr/ui';
-import type { Product, ProductStatus } from '@shelfr/shared';
-import type { ViewMode } from '../utils/productSort';
+import { Badge } from './Badge';
+import { StarRating } from './StarRating';
+import type { Product, ProductStatus, ViewMode } from '@shelfr/shared';
 
 interface ProductGridCardProps {
   product: Product;

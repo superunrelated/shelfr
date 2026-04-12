@@ -8,3 +8,7 @@ export { SectionLabel } from './components/SectionLabel';
 export { EmptyState } from './components/EmptyState';
 export { SkeletonCard } from './components/SkeletonCard';
 export { CollectionCard } from './components/CollectionCard';
+export { ProductGridCard } from './components/ProductGridCard';
+export { ProductListRow } from './components/ProductListRow';
+export { TotalRow } from './components/TotalRow';
+export { ScrapePreviewModal } from './components/ScrapePreviewModal';
