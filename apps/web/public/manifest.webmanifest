@@ -1,0 +1,28 @@
+{
+  "name": "Shelfr",
+  "short_name": "Shelfr",
+  "description": "Bookmark and compare products across stores",
+  "start_url": "/shelfr/collections",
+  "scope": "/shelfr/",
+  "display": "standalone",
+  "theme_color": "#1c1e2a",
+  "background_color": "#1c1e2a",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { RiMenuLine, RiArchiveLine, RiAddLine } from '@remixicon/react';
-import { CollectionCard, InvitationCard } from '@shelfr/ui';
+import { RiArchiveLine, RiAddLine } from '@remixicon/react';
+import { CollectionCard, InvitationCard, PageHeader } from '@shelfr/ui';
 import type { Collection, CollectionMember } from '@shelfr/shared';
 
 interface CollectionsGridProps {
@@ -48,27 +48,17 @@ export function CollectionsGrid({
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <header className="bg-white border-b border-neutral-200/80 px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-4 flex-shrink-0">
-        <button
-          className="md:hidden p-1.5 rounded text-neutral-400 hover:bg-neutral-100"
-          onClick={onOpenSidebar}
-          aria-label="Open menu"
-        >
-          <RiMenuLine size={20} />
-        </button>
-        <h1 className="flex-1 text-[18px] font-semibold text-[#1c1e2a] tracking-tight font-serif">
-          Collections
-        </h1>
+      <PageHeader title="Collections" onOpenSidebar={onOpenSidebar}>
         {archived.length > 0 && (
           <button
             onClick={() => setShowArchived(!showArchived)}
             title={showArchived ? 'Hide archived' : 'Show archived'}
-            className={`p-1.5 rounded border transition-all ${showArchived ? 'bg-[#1c1e2a] text-white border-[#1c1e2a]' : 'text-neutral-400 border-neutral-200 hover:text-neutral-600 hover:bg-neutral-100'}`}
+            className={`p-1.5 rounded border transition-all ${showArchived ? 'bg-white text-[#1c1e2a] border-white md:bg-[#1c1e2a] md:text-white md:border-[#1c1e2a]' : 'text-neutral-400 border-neutral-600 md:border-neutral-200 hover:text-neutral-300 md:hover:text-neutral-600 hover:bg-white/10 md:hover:bg-neutral-100'}`}
           >
             <RiArchiveLine size={14} />
           </button>
         )}
-      </header>
+      </PageHeader>
 
       <div className="p-3 md:p-6 flex flex-col gap-8">
         {/* Invitations */}
