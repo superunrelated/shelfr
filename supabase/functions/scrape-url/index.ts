@@ -342,13 +342,22 @@ function getImageCandidates(imgUrl: string, pageUrl: string): string[] {
   } catch {
     /* ignore */
   }
-  return candidates;
+  // Re-validate every synthesised candidate; the host may have been pivoted
+  // based on caller input.
+  return candidates.filter((c) => !isUnsafeUrl(c));
 }
 
 async function tryFetchImage(
   imgUrl: string,
   referer: string
 ): Promise<Response | null> {
+  // Defence-in-depth: never hit a private/metadata host, no matter how the URL
+  // arrived here (hint, scraped HTML, or synthesised candidate).
+  const unsafe = isUnsafeUrl(imgUrl);
+  if (unsafe) {
+    console.warn(`[image] ${imgUrl} rejected: ${unsafe}`);
+    return null;
+  }
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
@@ -541,7 +550,9 @@ function sanitiseHints(raw: unknown): ScrapeHints {
   if (!raw || typeof raw !== 'object') return {};
   const r = raw as Record<string, unknown>;
   const out: ScrapeHints = {};
-  if (typeof r['imageUrl'] === 'string') out.imageUrl = r['imageUrl'];
+  if (typeof r['imageUrl'] === 'string' && !isUnsafeUrl(r['imageUrl'])) {
+    out.imageUrl = r['imageUrl'];
+  }
   if (typeof r['title'] === 'string') out.title = r['title'];
   if (typeof r['price'] === 'number' && isFinite(r['price'])) {
     out.price = r['price'];

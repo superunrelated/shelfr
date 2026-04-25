@@ -114,6 +114,6 @@ export function extractDomain(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
   } catch {
-    return url.replace(/https?:\/\/(www\.)?/, '').split('/')[0];
+    return url.replace(/https?:\/\/(www\.)?/, '').split('/')[0] ?? url;
   }
 }

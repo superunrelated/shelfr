@@ -4,11 +4,7 @@
     "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["chrome"],
-    "paths": {
-      "@shelfr/shared": ["../../libs/shared/src/index.ts"],
-      "@shelfr/shared/*": ["../../libs/shared/src/*"]
-    }
+    "types": ["chrome"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules"]

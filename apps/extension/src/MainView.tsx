@@ -76,12 +76,13 @@ export function MainView({ userId, onLogout }: MainViewProps) {
   }, [fetchCollections]);
 
   useEffect(() => {
-    if (collections.length === 0) return;
+    const first = collections[0];
+    if (!first) return;
     getSelectedCollection().then((savedId) => {
       if (savedId && collections.some((c) => c.id === savedId)) {
         setSelectedId(savedId);
       } else {
-        setSelectedId(collections[0].id);
+        setSelectedId(first.id);
       }
     });
   }, [collections]);

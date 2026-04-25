@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shelfr — Store screenshot harness</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 1280px;
+        height: 800px;
+        overflow: hidden;
+        background: #fff;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      .stage {
+        position: relative;
+        width: 1280px;
+        height: 800px;
+      }
+      .backdrop {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      /* Approximate Chrome's popup placement: anchored under the toolbar near
+         the right edge. Tweak top/right if your toolbar layout differs. */
+      .popup {
+        position: absolute;
+        top: 24px;
+        right: 28px;
+        width: 360px;
+        background: #fafafa;
+        border-radius: 8px;
+        box-shadow:
+          0 12px 32px rgba(0, 0, 0, 0.18),
+          0 2px 6px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        font-size: 12px;
+        color: #1c1e2a;
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+      }
+
+      /* Header */
+      .popup-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #1c1e2a;
+        color: #fff;
+      }
+      .popup-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .popup-logo-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .popup-logo-mark svg {
+        width: 14px;
+        height: 14px;
+        fill: #fff;
+      }
+      .popup-logo-text {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .popup-logo-text span {
+        color: #fbbf24;
+      }
+      .popup-signout {
+        font-size: 11px;
+        color: #737373;
+      }
+
+      /* Preview */
+      .popup-preview {
+        background: #fff;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(229, 229, 229, 0.8);
+      }
+      .popup-eyebrow {
+        font-size: 10px;
+        color: #a3a3a3;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+      .popup-preview-row {
+        display: flex;
+        gap: 12px;
+      }
+      .popup-thumb {
+        width: 64px;
+        height: 64px;
+        flex-shrink: 0;
+        border-radius: 4px;
+        background: #f5f5f5;
+        border: 1px solid rgba(229, 229, 229, 0.8);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .popup-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .popup-preview-meta {
+        min-width: 0;
+        flex: 1;
+      }
+      .popup-preview-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: #1c1e2a;
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .popup-preview-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .popup-preview-price {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1c1e2a;
+      }
+      .popup-preview-domain {
+        font-size: 11px;
+        color: #a3a3a3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Image picker strip */
+      .popup-images {
+        margin-top: 10px;
+      }
+      .popup-images-row {
+        display: flex;
+        gap: 6px;
+        overflow: hidden;
+      }
+      .popup-thumb-sm {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        overflow: hidden;
+        flex-shrink: 0;
+        border: 1px solid #e5e5e5;
+      }
+      .popup-thumb-sm.active {
+        border: 1px solid #1c1e2a;
+        box-shadow: 0 0 0 1px #1c1e2a;
+      }
+      .popup-thumb-sm img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      /* Picker */
+      .popup-picker {
+        padding: 12px 16px;
+        flex: 1;
+      }
+      .popup-select {
+        position: relative;
+        margin-top: 6px;
+      }
+      .popup-select-inner {
+        width: 100%;
+        padding: 10px 32px 10px 14px;
+        font-size: 12px;
+        border: 1px solid #e5e5e5;
+        background: #fff;
+        border-radius: 4px;
+        color: #1c1e2a;
+      }
+      .popup-select-caret {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #a3a3a3;
+      }
+      .popup-collection-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .popup-collection-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #fb923c;
+      }
+      .popup-collection-name {
+        font-size: 11px;
+        color: #a3a3a3;
+      }
+
+      /* Add button */
+      .popup-add {
+        margin: 0 16px 4px;
+        padding: 10px 0;
+        background: #1c1e2a;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+      }
+      .popup-foot {
+        padding: 0 16px 16px;
+        font-size: 11px;
+        color: #a3a3a3;
+        margin-top: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* State variants */
+      body[data-state='duplicate'] .popup-add {
+        background: #e5e5e5;
+        color: #737373;
+      }
+      body[data-state='success'] .popup-add {
+        background: #059669;
+        color: #fff;
+      }
+      body:not([data-state='duplicate']) .popup-foot {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <iframe class="backdrop" src="orla.html" title="Mock product page"></iframe>
+
+      <div class="popup" role="dialog" aria-label="Shelfr extension popup">
+        <div class="popup-header">
+          <div class="popup-logo">
+            <div class="popup-logo-mark">
+              <svg viewBox="0 0 24 24">
+                <path
+                  d="M5 2h14a1 1 0 011 1v19.143a.5.5 0 01-.766.424L12 18.03l-7.234 4.537A.5.5 0 014 22.143V3a1 1 0 011-1z"
+                />
+              </svg>
+            </div>
+            <span class="popup-logo-text">shelf<span>r</span></span>
+          </div>
+          <span class="popup-signout">Sign out</span>
+        </div>
+
+        <div class="popup-preview">
+          <div class="popup-eyebrow">Preview</div>
+          <div class="popup-preview-row">
+            <div class="popup-thumb">
+              <img src="lamp1.png" alt="" />
+            </div>
+            <div class="popup-preview-meta">
+              <p class="popup-preview-title">
+                Orla Globe Pendant - Brushed Brass
+              </p>
+              <div class="popup-preview-line">
+                <span class="popup-preview-price">$253.00</span>
+                <span class="popup-preview-domain">lumens.com</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="popup-images">
+            <div class="popup-eyebrow" style="margin-bottom: 6px">
+              Choose image
+            </div>
+            <div class="popup-images-row">
+              <div class="popup-thumb-sm active">
+                <img src="lamp1.png" alt="" />
+              </div>
+              <div class="popup-thumb-sm">
+                <img src="lamp2.png" alt="" />
+              </div>
+              <div class="popup-thumb-sm">
+                <img src="lamp3.png" alt="" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="popup-picker">
+          <div class="popup-eyebrow" style="margin-bottom: 6px">
+            Save to collection
+          </div>
+          <div class="popup-select">
+            <div class="popup-select-inner">Living room lighting</div>
+            <svg
+              class="popup-select-caret"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+          <div class="popup-collection-meta">
+            <span class="popup-collection-dot"></span>
+            <span class="popup-collection-name">Living room lighting</span>
+          </div>
+        </div>
+
+        <button class="popup-add" id="popup-add" type="button">
+          Add to shelf
+        </button>
+        <p class="popup-foot" id="popup-foot">
+          Saved as &ldquo;Orla Globe Pendant - Brushed Brass&rdquo;
+        </p>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var state = params.get('state') || 'idle';
+        document.body.dataset.state = state;
+        var btn = document.getElementById('popup-add');
+        if (state === 'duplicate') btn.textContent = 'Already on this shelf';
+        else if (state === 'success') btn.textContent = 'Saved to shelf!';
+        else btn.textContent = 'Add to shelf';
+      })();
+    </script>
+  </body>
+</html>
