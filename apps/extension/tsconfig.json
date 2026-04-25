@@ -6,7 +6,8 @@
     "moduleResolution": "bundler",
     "types": ["chrome"],
     "paths": {
-      "@shelfr/shared": ["../../libs/shared/src/index.ts"]
+      "@shelfr/shared": ["../../libs/shared/src/index.ts"],
+      "@shelfr/shared/*": ["../../libs/shared/src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

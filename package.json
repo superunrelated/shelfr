@@ -9,6 +9,7 @@
     "build:extension": "nx build extension",
     "zip:extension": "nx build extension && cd dist/extension && zip -r ../shelfr-extension.zip . && echo 'Created dist/shelfr-extension.zip'",
     "dev:extension": "nx dev extension",
+    "dev:mock": "npx serve apps/extension/store -p 4300",
     "dev": "nx serve web",
     "db:push": "npx supabase db push",
     "deploy:functions": "npx supabase functions deploy scrape-url --project-ref juimdgzjknasimubewhp && npx supabase functions deploy invite-member --project-ref juimdgzjknasimubewhp",

@@ -1,9 +1,22 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from './supabase';
 import { getSelectedCollection, setSelectedCollection } from './storage';
-import type { Collection } from '@shelfr/shared';
-import { cleanUrl, extractDomain } from '@shelfr/shared';
-import { extractFromActiveTab } from './extract';
+import type { Collection } from '@shelfr/shared/types';
+import { cleanUrl, extractDomain } from '@shelfr/shared/utils';
+import { extractFromActiveTab, type ExtractedProduct } from './extract';
+
+function formatPrice(price: number, currency: string | null): string {
+  const cur = currency ?? 'NZD';
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: cur,
+      maximumFractionDigits: 2,
+    }).format(price);
+  } catch {
+    return `${cur} ${price.toFixed(2)}`;
+  }
+}
 
 function rid() {
   return crypto.randomUUID().slice(0, 6);
@@ -45,6 +58,9 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     id: number;
   } | null>(null);
   const [duplicate, setDuplicate] = useState<{ title: string } | null>(null);
+  const [preview, setPreview] = useState<ExtractedProduct | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [chosenImage, setChosenImage] = useState<string | null>(null);
 
   const fetchCollections = useCallback(async () => {
     const { data } = await supabase
@@ -78,6 +94,27 @@ export function MainView({ userId, onLogout }: MainViewProps) {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!tabInfo) return;
+    if (
+      tabInfo.url.startsWith('chrome://') ||
+      tabInfo.url.startsWith('chrome-extension://')
+    ) {
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    extractFromActiveTab(tabInfo.id).then((result) => {
+      if (cancelled) return;
+      setPreview(result);
+      setChosenImage(result?.images[0] ?? result?.imageUrl ?? null);
+      setPreviewLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tabInfo]);
 
   useEffect(() => {
     if (!tabInfo?.url || !selectedId) {
@@ -125,7 +162,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
       let currency: string | null = null;
       let shopName = domain;
 
-      const dom = await extractFromActiveTab(tabInfo.id);
+      const dom = preview ?? (await extractFromActiveTab(tabInfo.id));
       log(reqId, 'dom-extract', dom);
       if (dom) {
         if (dom.title) title = dom.title;
@@ -134,6 +171,8 @@ export function MainView({ userId, onLogout }: MainViewProps) {
         if (dom.currency) currency = dom.currency;
         if (dom.shopName) shopName = dom.shopName;
       }
+      // User-picked image overrides the extractor's primary guess.
+      if (chosenImage) imageUrl = chosenImage;
 
       try {
         const t0 = performance.now();
@@ -142,7 +181,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
             body: {
               url,
               hints: {
-                imageUrl: dom?.imageUrl ?? null,
+                imageUrl: chosenImage ?? dom?.imageUrl ?? null,
                 title: dom?.title ?? null,
                 price: dom?.price ?? null,
                 currency: dom?.currency ?? null,
@@ -267,18 +306,78 @@ export function MainView({ userId, onLogout }: MainViewProps) {
         </button>
       </div>
 
-      {/* Current page */}
+      {/* Preview */}
       <div className="px-4 py-3 bg-white border-b border-neutral-200/80">
-        <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1">
-          Current page
+        <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-2">
+          Preview
         </p>
-        <p className="text-xs text-[#1c1e2a] font-medium truncate">
-          {tabInfo?.title ?? 'Loading...'}
-        </p>
-        {tabInfo?.url && (
-          <p className="text-[11px] text-neutral-400 truncate mt-0.5">
-            {extractDomain(tabInfo.url)}
-          </p>
+        <div className="flex gap-3">
+          <div className="w-16 h-16 rounded bg-neutral-100 flex-shrink-0 overflow-hidden flex items-center justify-center border border-neutral-200/80">
+            {chosenImage ? (
+              <img
+                src={chosenImage}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+              />
+            ) : (
+              <span className="text-[10px] text-neutral-300">
+                {previewLoading ? '...' : 'No image'}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-[#1c1e2a] font-medium line-clamp-2 leading-snug">
+              {preview?.title ?? tabInfo?.title ?? 'Loading...'}
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              {preview?.price !== null && preview?.price !== undefined && (
+                <span className="text-xs text-[#1c1e2a] font-semibold">
+                  {formatPrice(preview.price, preview.currency)}
+                </span>
+              )}
+              {tabInfo?.url && (
+                <span className="text-[11px] text-neutral-400 truncate">
+                  {extractDomain(tabInfo.url)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {preview && preview.images.length > 1 && (
+          <div className="mt-2.5">
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1.5">
+              Choose image
+            </p>
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+              {preview.images.map((src) => {
+                const active = src === chosenImage;
+                return (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setChosenImage(src)}
+                    className={`w-10 h-10 rounded overflow-hidden flex-shrink-0 border transition-all ${
+                      active
+                        ? 'border-[#1c1e2a] ring-1 ring-[#1c1e2a]'
+                        : 'border-neutral-200 hover:border-neutral-400'
+                    }`}
+                    aria-label="Use this image"
+                    aria-pressed={active}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onError={(e) =>
+                        (e.currentTarget.parentElement!.style.display = 'none')
+                      }
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 
