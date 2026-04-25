@@ -3,6 +3,19 @@ import { supabase } from './supabase';
 import { getSelectedCollection, setSelectedCollection } from './storage';
 import type { Collection } from '@shelfr/shared';
 import { cleanUrl, extractDomain } from '@shelfr/shared';
+import { extractFromActiveTab } from './extract';
+
+function rid() {
+  return crypto.randomUUID().slice(0, 6);
+}
+
+function log(reqId: string, step: string, data?: unknown) {
+  if (data === undefined) {
+    console.log(`[shelfr ${reqId}] ${step}`);
+  } else {
+    console.log(`[shelfr ${reqId}] ${step}`, data);
+  }
+}
 
 interface MainViewProps {
   userId: string;
@@ -11,9 +24,12 @@ interface MainViewProps {
 
 type AddState = 'idle' | 'adding' | 'success' | 'error';
 
-function buttonClass(state: AddState) {
+function buttonClass(state: AddState, duplicate: boolean) {
   if (state === 'success') return 'bg-emerald-600 text-white';
   if (state === 'error') return 'bg-red-500 text-white';
+  if (duplicate) {
+    return 'bg-neutral-200 text-neutral-500 cursor-default';
+  }
   return 'bg-[#1c1e2a] text-white hover:bg-[#2a2d3d] disabled:opacity-40 disabled:cursor-default';
 }
 
@@ -23,9 +39,12 @@ export function MainView({ userId, onLogout }: MainViewProps) {
   const [loading, setLoading] = useState(true);
   const [addState, setAddState] = useState<AddState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [tabInfo, setTabInfo] = useState<{ url: string; title: string } | null>(
-    null
-  );
+  const [tabInfo, setTabInfo] = useState<{
+    url: string;
+    title: string;
+    id: number;
+  } | null>(null);
+  const [duplicate, setDuplicate] = useState<{ title: string } | null>(null);
 
   const fetchCollections = useCallback(async () => {
     const { data } = await supabase
@@ -54,11 +73,34 @@ export function MainView({ userId, onLogout }: MainViewProps) {
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
-      if (tab?.url && tab?.title) {
-        setTabInfo({ url: tab.url, title: tab.title });
+      if (tab?.url && tab?.title && typeof tab.id === 'number') {
+        setTabInfo({ url: tab.url, title: tab.title, id: tab.id });
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!tabInfo?.url || !selectedId) {
+      setDuplicate(null);
+      return;
+    }
+    let cancelled = false;
+    const cleaned = cleanUrl(tabInfo.url);
+    supabase
+      .from('products')
+      .select('title')
+      .eq('collection_id', selectedId)
+      .eq('source_url', cleaned)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setDuplicate(data ? { title: data.title } : null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tabInfo?.url, selectedId, addState]);
 
   function handleCollectionChange(id: string) {
     setSelectedId(id);
@@ -66,43 +108,88 @@ export function MainView({ userId, onLogout }: MainViewProps) {
   }
 
   async function handleAdd() {
-    if (!selectedId || !tabInfo) return;
+    if (!selectedId || !tabInfo || duplicate) return;
 
+    const reqId = rid();
     setAddState('adding');
     setErrorMsg('');
 
     try {
       const url = cleanUrl(tabInfo.url);
       const domain = extractDomain(url);
+      log(reqId, 'start', { url, domain, tabId: tabInfo.id });
 
       let title = tabInfo.title;
       let imageUrl: string | null = null;
       let price: number | null = null;
+      let currency: string | null = null;
       let shopName = domain;
 
-      try {
-        const { data: scrapeData } = await supabase.functions.invoke(
-          'scrape-url',
-          { body: { url } }
-        );
-        if (scrapeData && !scrapeData.error) {
-          title = scrapeData.title || title;
-          imageUrl = scrapeData.image_url || null;
-          price = scrapeData.price || null;
-          shopName = scrapeData.shop_name || domain;
-        }
-      } catch {
-        // Scrape failed — continue with tab metadata
+      const dom = await extractFromActiveTab(tabInfo.id);
+      log(reqId, 'dom-extract', dom);
+      if (dom) {
+        if (dom.title) title = dom.title;
+        if (dom.imageUrl) imageUrl = dom.imageUrl;
+        if (dom.price !== null) price = dom.price;
+        if (dom.currency) currency = dom.currency;
+        if (dom.shopName) shopName = dom.shopName;
       }
 
-      const { error } = await supabase.from('products').insert({
+      try {
+        const t0 = performance.now();
+        const { data: scrapeData, error: scrapeError } =
+          await supabase.functions.invoke('scrape-url', {
+            body: {
+              url,
+              hints: {
+                imageUrl: dom?.imageUrl ?? null,
+                title: dom?.title ?? null,
+                price: dom?.price ?? null,
+                currency: dom?.currency ?? null,
+                shopName: dom?.shopName ?? null,
+              },
+            },
+          });
+        log(reqId, 'scrape-url', {
+          ms: Math.round(performance.now() - t0),
+          error: scrapeError,
+          data: scrapeData,
+        });
+        if (scrapeData && !scrapeData.error) {
+          // Server may have rehosted the image to Supabase storage — prefer that URL.
+          if (scrapeData.image_url) imageUrl = scrapeData.image_url;
+          if (!title || title === tabInfo.title) {
+            title = scrapeData.title || title;
+          }
+          if (price === null && typeof scrapeData.price === 'number') {
+            price = scrapeData.price;
+          }
+          if (!currency && scrapeData.currency) currency = scrapeData.currency;
+          if (shopName === domain && scrapeData.shop_name) {
+            shopName = scrapeData.shop_name;
+          }
+        }
+      } catch (e) {
+        log(reqId, 'scrape-url-threw', e);
+      }
+
+      if (price === null) {
+        console.warn(
+          `[shelfr ${reqId}] no price found — storing 0 (schema is NOT NULL)`
+        );
+      }
+      if (!imageUrl) {
+        console.warn(`[shelfr ${reqId}] no image found — storing null`);
+      }
+
+      const payload = {
         user_id: userId,
         collection_id: selectedId,
         title,
         source_url: url,
         image_url: imageUrl,
         price: price ?? 0,
-        currency: 'NZD',
+        currency: currency ?? 'NZD',
         shop_name: shopName,
         shop_domain: domain,
         status: 'considering',
@@ -111,9 +198,22 @@ export function MainView({ userId, onLogout }: MainViewProps) {
         quantity: 1,
         archived: false,
         added_by: userId,
+      };
+      log(reqId, 'insert-product', {
+        title,
+        price: payload.price,
+        currency: payload.currency,
+        shop_name: shopName,
+        hasImage: !!imageUrl,
       });
 
-      if (error) throw error;
+      const { error } = await supabase.from('products').insert(payload);
+
+      if (error) {
+        log(reqId, 'insert-error', error);
+        throw error;
+      }
+      log(reqId, 'insert-ok');
 
       await supabase
         .from('shops')
@@ -253,16 +353,32 @@ export function MainView({ userId, onLogout }: MainViewProps) {
         <button
           onClick={handleAdd}
           disabled={
-            !selectedId || addState === 'adding' || isChromePage || !tabInfo
+            !selectedId ||
+            addState === 'adding' ||
+            isChromePage ||
+            !tabInfo ||
+            (addState === 'idle' && !!duplicate)
           }
-          className={`w-full py-2.5 rounded text-xs font-medium transition-all duration-150 ${buttonClass(addState)}`}
+          className={`w-full py-2.5 rounded text-xs font-medium transition-all duration-150 ${buttonClass(addState, addState === 'idle' && !!duplicate)}`}
         >
           {addState === 'adding' && 'Saving...'}
           {addState === 'success' && 'Saved to shelf!'}
           {addState === 'error' && 'Failed to save'}
           {addState === 'idle' &&
-            (isChromePage ? 'Cannot save Chrome pages' : 'Add to shelf')}
+            (isChromePage
+              ? 'Cannot save Chrome pages'
+              : duplicate
+                ? 'Already on this shelf'
+                : 'Add to shelf')}
         </button>
+        {addState === 'idle' && duplicate && !isChromePage && (
+          <p
+            className="text-[11px] text-neutral-400 mt-2 truncate"
+            title={duplicate.title}
+          >
+            Saved as "{duplicate.title}"
+          </p>
+        )}
       </div>
     </div>
   );

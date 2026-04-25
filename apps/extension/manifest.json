@@ -3,8 +3,26 @@
   "name": "Shelfr",
   "description": "Save products to your Shelfr collections while browsing",
   "version": "1.0.1",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://*.supabase.co/*"],
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://*.supabase.co/*",
+    "https://superunrelated.github.io/shelfr/*",
+    "http://localhost:4200/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://superunrelated.github.io/shelfr/*",
+        "http://localhost:4200/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

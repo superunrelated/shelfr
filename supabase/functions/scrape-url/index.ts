@@ -446,32 +446,81 @@ async function storeImage(
   return uploadImageToStorage(imgResponse, resolvedImageUrl);
 }
 
+interface ScrapeSources {
+  title: string;
+  image: string;
+  price: string;
+  siteName: string;
+}
+
 function scrapeMetadata(html: string, url: string) {
-  const title =
-    extractMeta(html, 'og:title') ??
-    extractMeta(html, 'twitter:title') ??
-    extractTitle(html);
-  const image =
-    extractMeta(html, 'og:image') ??
-    extractMeta(html, 'twitter:image') ??
-    extractProductImage(html);
+  const sources: ScrapeSources = {
+    title: 'none',
+    image: 'none',
+    price: 'none',
+    siteName: 'none',
+  };
+
+  let title: string | null = extractMeta(html, 'og:title');
+  if (title) sources.title = 'og:title';
+  if (!title) {
+    title = extractMeta(html, 'twitter:title');
+    if (title) sources.title = 'twitter:title';
+  }
+  if (!title) {
+    title = extractTitle(html);
+    if (title) sources.title = '<title>';
+  }
+
+  let image: string | null = extractMeta(html, 'og:image');
+  if (image) sources.image = 'og:image';
+  if (!image) {
+    image = extractMeta(html, 'twitter:image');
+    if (image) sources.image = 'twitter:image';
+  }
+  if (!image) {
+    image = extractProductImage(html);
+    if (image) sources.image = 'dom-heuristic';
+  }
+
   const price = extractPrice(html);
+  if (price !== null) sources.price = 'regex-or-jsonld';
+
   const siteName = extractMeta(html, 'og:site_name');
+  if (siteName) sources.siteName = 'og:site_name';
+
   const resolvedImageUrl = resolveImageUrl(image, url);
   const domain = new URL(url).hostname.replace(/^www\./, '');
 
-  return { title, resolvedImageUrl, price, siteName, domain };
+  return { title, resolvedImageUrl, price, siteName, domain, sources };
 }
 
 async function fetchPage(url: string): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
+  // Approximate a real Chrome navigation. Many retail sites reject requests
+  // whose header signature does not look like a browser (missing sec-ch-ua,
+  // wrong Accept-Encoding, no Referer).
   const response = await fetch(url, {
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      Accept:
+        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en-NZ,en-US;q=0.9,en;q=0.8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Cache-Control': 'max-age=0',
+      'Upgrade-Insecure-Requests': '1',
+      DNT: '1',
+      Referer: 'https://www.google.com/',
+      'sec-ch-ua':
+        '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"macOS"',
+      'sec-fetch-dest': 'document',
+      'sec-fetch-mode': 'navigate',
+      'sec-fetch-site': 'cross-site',
+      'sec-fetch-user': '?1',
     },
     redirect: 'follow',
     signal: controller.signal,
@@ -480,14 +529,46 @@ async function fetchPage(url: string): Promise<Response> {
   return response;
 }
 
+interface ScrapeHints {
+  imageUrl?: string | null;
+  title?: string | null;
+  price?: number | null;
+  currency?: string | null;
+  shopName?: string | null;
+}
+
+function sanitiseHints(raw: unknown): ScrapeHints {
+  if (!raw || typeof raw !== 'object') return {};
+  const r = raw as Record<string, unknown>;
+  const out: ScrapeHints = {};
+  if (typeof r['imageUrl'] === 'string') out.imageUrl = r['imageUrl'];
+  if (typeof r['title'] === 'string') out.title = r['title'];
+  if (typeof r['price'] === 'number' && isFinite(r['price'])) {
+    out.price = r['price'];
+  }
+  if (typeof r['currency'] === 'string') out.currency = r['currency'];
+  if (typeof r['shopName'] === 'string') out.shopName = r['shopName'];
+  return out;
+}
+
+function logLine(reqId: string, step: string, data?: unknown) {
+  const base = `[scrape-url ${reqId}] ${step}`;
+  if (data === undefined) console.log(base);
+  else console.log(base, JSON.stringify(data));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
+  const reqId = crypto.randomUUID().slice(0, 8);
+  const t0 = Date.now();
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      logLine(reqId, 'reject', { reason: 'missing-auth' });
       return jsonResponse(req, { error: 'Missing auth' }, 401);
     }
 
@@ -501,6 +582,7 @@ serve(async (req) => {
       data: { user },
     } = await userClient.auth.getUser();
     if (!user) {
+      logLine(reqId, 'reject', { reason: 'invalid-auth' });
       return jsonResponse(req, { error: 'Invalid auth' }, 401);
     }
 
@@ -512,6 +594,7 @@ serve(async (req) => {
       maxRequests: 30,
     });
     if (!ok) {
+      logLine(reqId, 'reject', { reason: 'rate-limit', userId: user.id });
       return jsonResponse(
         req,
         { error: 'Rate limit exceeded. Try again shortly.' },
@@ -519,42 +602,125 @@ serve(async (req) => {
       );
     }
 
-    const { url } = await req.json();
+    const body = await req.json();
+    const { url, hints: rawHints } = body ?? {};
+    const hints = sanitiseHints(rawHints);
     if (!url || typeof url !== 'string') {
+      logLine(reqId, 'reject', { reason: 'missing-url' });
       return jsonResponse(req, { error: 'URL is required' }, 400);
     }
 
     const unsafeReason = isUnsafeUrl(url);
     if (unsafeReason) {
+      logLine(reqId, 'reject', { reason: 'unsafe-url', url, unsafeReason });
       return jsonResponse(req, { error: unsafeReason }, 400);
     }
 
-    const response = await fetchPage(url);
-    if (!response.ok) {
-      return jsonResponse(
-        req,
-        { error: `Failed to fetch: ${response.status}` },
-        502
-      );
+    logLine(reqId, 'start', {
+      url,
+      hints: {
+        hasImageUrl: !!hints.imageUrl,
+        hasTitle: !!hints.title,
+        hasPrice: hints.price !== undefined && hints.price !== null,
+        hasCurrency: !!hints.currency,
+        hasShopName: !!hints.shopName,
+      },
+    });
+
+    const domain = new URL(url).hostname.replace(/^www\./, '');
+
+    // Skip HTML scrape entirely when the client provided everything we need.
+    const hintsComplete =
+      !!hints.imageUrl &&
+      !!hints.title &&
+      typeof hints.price === 'number' &&
+      !!hints.shopName;
+
+    let title: string | null = hints.title ?? null;
+    let resolvedImageUrl: string | null = hints.imageUrl ?? null;
+    let price: number | null =
+      typeof hints.price === 'number' ? hints.price : null;
+    let siteName: string | null = hints.shopName ?? null;
+    let sources: ScrapeSources | null = null;
+    let htmlLen = 0;
+    let fetchMs = 0;
+
+    if (hintsComplete) {
+      logLine(reqId, 'scrape-skipped', { reason: 'hints-complete' });
+    } else {
+      const tFetch = Date.now();
+      const response = await fetchPage(url);
+      fetchMs = Date.now() - tFetch;
+      if (!response.ok) {
+        const haveAnyHint =
+          !!resolvedImageUrl || !!title || price !== null || !!siteName;
+        logLine(reqId, 'fetch-fail', {
+          status: response.status,
+          fetchMs,
+          continuingWithHints: haveAnyHint,
+        });
+        if (!haveAnyHint) {
+          return jsonResponse(
+            req,
+            { error: `Failed to fetch: ${response.status}` },
+            502
+          );
+        }
+      } else {
+        const html = await response.text();
+        htmlLen = html.length;
+        const scraped = scrapeMetadata(html, url);
+        sources = scraped.sources;
+        if (!title) title = scraped.title;
+        if (!resolvedImageUrl) resolvedImageUrl = scraped.resolvedImageUrl;
+        if (price === null) price = scraped.price;
+        if (!siteName) siteName = scraped.siteName;
+        logLine(reqId, 'scrape-done', {
+          fetchMs,
+          htmlLen,
+          sources,
+          haveTitle: !!title,
+          haveImage: !!resolvedImageUrl,
+          havePrice: price !== null,
+        });
+      }
     }
 
-    const html = await response.text();
-    const { title, resolvedImageUrl, price, siteName, domain } = scrapeMetadata(
-      html,
-      url
-    );
+    const tStore = Date.now();
     const storedImageUrl = await storeImage(resolvedImageUrl, url);
+    const storeMs = Date.now() - tStore;
+    const rehosted =
+      !!storedImageUrl &&
+      !!resolvedImageUrl &&
+      storedImageUrl !== resolvedImageUrl;
+    logLine(reqId, 'store-image', {
+      storeMs,
+      hadImage: !!resolvedImageUrl,
+      rehosted,
+    });
 
-    return jsonResponse(req, {
+    const result = {
       title: title ?? null,
       image_url: storedImageUrl ?? resolvedImageUrl ?? null,
       price: price ?? null,
+      currency: hints.currency ?? null,
       shop_name: siteName ?? domain,
       shop_domain: domain,
+      _debug: { reqId, sources, fetchMs, htmlLen, storeMs, hintsComplete },
+    };
+    logLine(reqId, 'done', {
+      totalMs: Date.now() - t0,
+      result: {
+        haveTitle: !!result.title,
+        haveImage: !!result.image_url,
+        havePrice: result.price !== null,
+      },
     });
+    return jsonResponse(req, result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     const isTimeout = message.includes('abort');
+    logLine(reqId, 'error', { message, isTimeout, totalMs: Date.now() - t0 });
     return jsonResponse(
       req,
       {

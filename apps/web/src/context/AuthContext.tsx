@@ -32,7 +32,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    function handleBridgeMessage(event: MessageEvent) {
+      if (event.source !== window) return;
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || data.type !== 'shelfr:auth-bridge') return;
+      const { access_token, refresh_token } = data;
+      if (!access_token || !refresh_token) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) return;
+        supabase.auth.setSession({ access_token, refresh_token });
+      });
+    }
+    window.addEventListener('message', handleBridgeMessage);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('message', handleBridgeMessage);
+    };
   }, []);
 
   async function signUp(email: string, password: string) {
