@@ -32,7 +32,12 @@ export function LoginView({ onLogin }: LoginViewProps) {
   return (
     <div className="flex flex-col items-center px-6 py-8">
       {/* Logo — matches web Auth page */}
-      <div className="flex items-center justify-center gap-2 mb-8">
+      <a
+        href="https://superunrelated.github.io/shelfr/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 mb-8 hover:opacity-75 transition-opacity"
+      >
         <div className="w-9 h-9 rounded bg-[#1c1e2a] flex items-center justify-center">
           <svg
             viewBox="0 0 24 24"
@@ -47,7 +52,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
         >
           shelf<span className="text-amber-500">r</span>
         </span>
-      </div>
+      </a>
 
       {/* Card — matches web Auth card */}
       <div className="w-full bg-white rounded shadow-sm border border-neutral-200/80 p-5">

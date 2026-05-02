@@ -90,7 +90,7 @@ export function Sidebar({
             onClick={onNavigateHome}
             className="px-6 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium hover:text-neutral-300 transition-colors"
           >
-            My collections
+            My shelves
           </button>
           {owned.map((c) => (
             <SidebarItem
@@ -104,7 +104,7 @@ export function Sidebar({
           ))}
           {owned.length === 0 && (
             <p className="px-6 py-4 text-xs text-neutral-600">
-              No collections yet.
+              No shelves yet.
             </p>
           )}
           {shared.length > 0 && (
@@ -135,7 +135,7 @@ export function Sidebar({
                 value={newColName}
                 onChange={(e) => setNewColName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="Collection name"
+                placeholder="Shelf name"
                 autoFocus
                 className="text-xs px-3 py-2 bg-neutral-800 border border-neutral-600 rounded text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-400"
               />
@@ -159,7 +159,7 @@ export function Sidebar({
               onClick={() => setShowNewCol(true)}
               className="w-full py-2.5 text-xs text-neutral-500 border border-neutral-700 rounded hover:border-neutral-500 hover:text-neutral-300 transition-all flex items-center justify-center gap-1.5"
             >
-              <RiAddLine size={14} /> New collection
+              <RiAddLine size={14} /> New shelf
             </button>
           )}
           {isChrome && !extensionInstalled && (
