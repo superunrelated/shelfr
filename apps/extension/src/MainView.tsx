@@ -4,6 +4,18 @@ import { getSelectedCollection, setSelectedCollection } from './storage';
 import type { Collection } from '@shelfr/shared/types';
 import { cleanUrl, extractDomain } from '@shelfr/shared/utils';
 import { extractFromActiveTab, type ExtractedProduct } from './extract';
+import { CreateCollectionView } from './CreateCollectionView';
+
+const WEB_APP_BASE = 'https://superunrelated.github.io/shelfr';
+
+const DEFAULT_COLLECTION_COLORS = [
+  '#5b8db8',
+  '#4f9a7e',
+  '#c4883d',
+  '#b06b7d',
+  '#6b5eaa',
+  '#bf6b4a',
+];
 
 function formatPrice(price: number, currency: string | null): string {
   const cur = currency ?? 'NZD';
@@ -50,6 +62,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'main' | 'create'>('main');
   const [addState, setAddState] = useState<AddState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [tabInfo, setTabInfo] = useState<{
@@ -143,6 +156,21 @@ export function MainView({ userId, onLogout }: MainViewProps) {
   function handleCollectionChange(id: string) {
     setSelectedId(id);
     setSelectedCollection(id);
+  }
+
+  function handleCollectionCreated(col: Collection) {
+    setCollections((prev) => [...prev, col]);
+    setSelectedId(col.id);
+    setSelectedCollection(col.id);
+    setView('main');
+  }
+
+  function handleOpenCollection() {
+    const col = collections.find((c) => c.id === selectedId);
+    if (!col) return;
+    chrome.tabs.create({
+      url: `${WEB_APP_BASE}/collections/${col.slug}`,
+    });
   }
 
   async function handleAdd() {
@@ -279,6 +307,23 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     tabInfo?.url?.startsWith('chrome://') ||
     tabInfo?.url?.startsWith('chrome-extension://');
 
+  if (view === 'create') {
+    const existingSlugs = new Set(collections.map((c) => c.slug));
+    const defaultColor =
+      DEFAULT_COLLECTION_COLORS[
+        collections.length % DEFAULT_COLLECTION_COLORS.length
+      ] ?? DEFAULT_COLLECTION_COLORS[0]!;
+    return (
+      <CreateCollectionView
+        userId={userId}
+        existingSlugs={existingSlugs}
+        defaultColor={defaultColor}
+        onCreated={handleCollectionCreated}
+        onCancel={() => setView('main')}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-[420px]">
       {/* Header — dark sidebar style */}
@@ -389,36 +434,87 @@ export function MainView({ userId, onLogout }: MainViewProps) {
 
       {/* Collection picker */}
       <div className="px-4 py-3 flex-1">
-        <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-1.5 block">
-          Save to shelf
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">
+            Save to shelf
+          </label>
+          <button
+            type="button"
+            onClick={handleOpenCollection}
+            disabled={!selected}
+            aria-label="Open shelf in new tab"
+            title="Open shelf in new tab"
+            className="text-neutral-400 hover:text-neutral-600 disabled:opacity-30 disabled:hover:text-neutral-400 transition-colors"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14 3h7v7m0-7L10 14m-3-9H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-2"
+              />
+            </svg>
+          </button>
+        </div>
         {loading && (
           <div className="text-xs text-neutral-400 py-2">
             Loading shelves...
           </div>
         )}
         {!loading && collections.length === 0 && (
-          <div className="text-xs text-neutral-400 py-2">
-            No shelves yet. Create one in the Shelfr app first.
-          </div>
+          <button
+            type="button"
+            onClick={() => setView('create')}
+            className="w-full text-xs text-neutral-500 py-2.5 rounded border border-dashed border-neutral-300 hover:border-neutral-400 hover:text-neutral-700 transition-colors"
+          >
+            + Create your first shelf
+          </button>
         )}
         {!loading && collections.length > 0 && (
-          <div className="relative">
-            <select
-              value={selectedId ?? ''}
-              onChange={(e) => handleCollectionChange(e.target.value)}
-              className="w-full appearance-none text-xs px-3.5 py-2.5 pr-8 rounded border border-neutral-200 bg-white
-                         focus:outline-none focus:border-neutral-400 transition-colors cursor-pointer"
+          <div className="flex items-stretch gap-1.5">
+            <div className="relative flex-1 min-w-0">
+              <select
+                value={selectedId ?? ''}
+                onChange={(e) => handleCollectionChange(e.target.value)}
+                className="w-full appearance-none text-xs px-3.5 py-2.5 pr-8 rounded border border-neutral-200 bg-white
+                           focus:outline-none focus:border-neutral-400 transition-colors cursor-pointer"
+              >
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                <svg
+                  className="w-3.5 h-3.5 text-neutral-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setView('create')}
+              aria-label="Create new collection"
+              title="Create new collection"
+              className="flex-shrink-0 w-9 rounded border border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-400 transition-colors flex items-center justify-center"
             >
-              {collections.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
               <svg
-                className="w-3.5 h-3.5 text-neutral-400"
+                className="w-3.5 h-3.5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -427,22 +523,10 @@ export function MainView({ userId, onLogout }: MainViewProps) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
+                  d="M12 5v14m-7-7h14"
                 />
               </svg>
-            </div>
-          </div>
-        )}
-
-        {selected && (
-          <div className="flex items-center gap-1.5 mt-2">
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: selected.color }}
-            />
-            <span className="text-[11px] text-neutral-400">
-              {selected.name}
-            </span>
+            </button>
           </div>
         )}
       </div>

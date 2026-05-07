@@ -30,6 +30,7 @@ function copyExtensionAssets() {
 export default defineConfig({
   plugins: [react(), copyExtensionAssets()],
   root: __dirname,
+  envDir: resolve(__dirname, '../..'),
   css: {
     postcss: resolve(__dirname, '../..'),
   },
