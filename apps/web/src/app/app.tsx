@@ -37,7 +37,7 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (user) return <Navigate to="/collections" replace />;
+  if (user) return <Navigate to="/shelfs" replace />;
   return children;
 }
 
@@ -69,7 +69,7 @@ export default function App() {
         />
         <Route path="/privacy-policy" element={<PrivacyPage />} />
         <Route
-          path="/collections"
+          path="/shelfs"
           element={
             <ProtectedRoute>
               <HomePage />
@@ -77,7 +77,7 @@ export default function App() {
           }
         />
         <Route
-          path="/collections/:slug"
+          path="/shelfs/:slug"
           element={
             <ProtectedRoute>
               <HomePage />
@@ -85,7 +85,7 @@ export default function App() {
           }
         />
         <Route
-          path="/collections/:slug/:productId"
+          path="/shelfs/:slug/:productId"
           element={
             <ProtectedRoute>
               <HomePage />

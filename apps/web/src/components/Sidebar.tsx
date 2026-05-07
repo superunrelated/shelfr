@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   RiAddLine,
   RiLogoutBoxRLine,
-  RiDeleteBinLine,
+  RiArchiveLine,
   RiGroupLine,
   RiChromeLine,
 } from '@remixicon/react';
@@ -19,7 +19,7 @@ interface SidebarProps {
   onNavigateHome: () => void;
   onSwitchCollection: (id: string) => void;
   onCreateCollection: (name: string) => void;
-  onDeleteCollection: (id: string) => void;
+  onArchiveCollection: (id: string) => void;
   onSignOut: () => void;
   onDeleteAccount: () => void;
   onClose: () => void;
@@ -35,7 +35,7 @@ export function Sidebar({
   onNavigateHome,
   onSwitchCollection,
   onCreateCollection,
-  onDeleteCollection,
+  onArchiveCollection,
   onSignOut,
   onDeleteAccount,
   onClose,
@@ -99,7 +99,7 @@ export function Sidebar({
               active={activeColId === c.id}
               shared={false}
               onSwitch={() => onSwitchCollection(c.id)}
-              onDelete={() => onDeleteCollection(c.id)}
+              onArchive={() => onArchiveCollection(c.id)}
             />
           ))}
           {owned.length === 0 && (
@@ -211,13 +211,13 @@ function SidebarItem({
   active,
   shared,
   onSwitch,
-  onDelete,
+  onArchive,
 }: {
   collection: Collection;
   active: boolean;
   shared: boolean;
   onSwitch: () => void;
-  onDelete?: () => void;
+  onArchive?: () => void;
 }) {
   return (
     <div
@@ -237,16 +237,16 @@ function SidebarItem({
           <RiGroupLine size={12} className="text-neutral-600 flex-shrink-0" />
         )}
       </button>
-      {onDelete && (
+      {onArchive && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            onArchive();
           }}
-          className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-red-400 transition-all"
-          title="Delete collection"
+          className="opacity-0 group-hover:opacity-100 mr-3 p-1 rounded text-neutral-600 hover:text-neutral-300 transition-all"
+          title="Archive shelf"
         >
-          <RiDeleteBinLine size={13} />
+          <RiArchiveLine size={13} />
         </button>
       )}
     </div>

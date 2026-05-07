@@ -153,6 +153,18 @@ export function useProducts(
     }
   }
 
+  async function move(id: string, targetCollectionId: string) {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    const { error: err } = await supabase
+      .from('products')
+      .update({ collection_id: targetCollectionId })
+      .eq('id', id);
+    if (err) {
+      setError(err.message);
+      fetch();
+    }
+  }
+
   function clearError() {
     setError(null);
   }
@@ -164,6 +176,7 @@ export function useProducts(
     create,
     update,
     remove,
+    move,
     refetch: fetch,
     clearError,
   };

@@ -6,6 +6,7 @@ import {
   RiArchiveLine,
   RiDeleteBinLine,
   RiImageLine,
+  RiArrowGoForwardLine,
 } from '@remixicon/react';
 import { StarRating, StatusPicker, SectionLabel } from '@shelfr/ui';
 import { uploadImage } from '@shelfr/shared';
@@ -18,6 +19,7 @@ interface ProductDrawerProps {
   onUpdate: (id: string, changes: Partial<Product>) => void;
   onArchive: () => void;
   onDelete: () => void;
+  onMove?: () => void;
   onClose: () => void;
   onRescrape: () => void;
   rescraping: boolean;
@@ -29,6 +31,7 @@ export function ProductDrawer({
   onUpdate,
   onArchive,
   onDelete,
+  onMove,
   onClose,
   onRescrape,
   rescraping,
@@ -307,6 +310,15 @@ export function ProductDrawer({
           {!readOnly && (
             <>
               <div className="w-px h-5 bg-neutral-200" />
+              {onMove && (
+                <button
+                  onClick={onMove}
+                  title="Move to another shelf"
+                  className="p-3 md:p-2 rounded text-neutral-400 hover:text-[#1c1e2a] hover:bg-neutral-100 transition-colors"
+                >
+                  <RiArrowGoForwardLine size={18} />
+                </button>
+              )}
               <button
                 onClick={onArchive}
                 title={product.archived ? 'Unarchive' : 'Archive'}

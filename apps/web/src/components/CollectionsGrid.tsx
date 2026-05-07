@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RiArchiveLine, RiAddLine } from '@remixicon/react';
+import { RiArchiveLine, RiAddLine, RiDeleteBinLine } from '@remixicon/react';
 import { CollectionCard, InvitationCard, PageHeader } from '@shelfr/ui';
 import type { Collection, CollectionMember } from '@shelfr/shared';
 
@@ -11,6 +11,7 @@ interface CollectionsGridProps {
   invitationCollections: Collection[];
   onSwitchCollection: (id: string) => void;
   onArchiveCollection: (id: string, archived: boolean) => void;
+  onDeleteCollection: (id: string) => void;
   onAcceptInvite: (memberId: string) => void;
   onDeclineInvite: (memberId: string) => void;
   onLeaveCollection: (collectionId: string) => void;
@@ -26,6 +27,7 @@ export function CollectionsGrid({
   invitationCollections,
   onSwitchCollection,
   onArchiveCollection,
+  onDeleteCollection,
   onAcceptInvite,
   onDeclineInvite,
   onLeaveCollection,
@@ -141,12 +143,21 @@ export function CollectionsGrid({
                     imageUrl={collectionCovers[c.id]}
                     onClick={() => onSwitchCollection(c.id)}
                   />
-                  <button
-                    onClick={() => onArchiveCollection(c.id, false)}
-                    className="absolute top-2 right-2 text-[10px] text-neutral-400 bg-white/90 backdrop-blur-sm rounded px-2 py-1 opacity-0 group-hover:opacity-100 hover:text-[#1c1e2a] transition-all"
-                  >
-                    Unarchive
-                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={() => onArchiveCollection(c.id, false)}
+                      className="text-[10px] text-neutral-400 bg-white/90 backdrop-blur-sm rounded px-2 py-1 hover:text-[#1c1e2a] transition-colors"
+                    >
+                      Unarchive
+                    </button>
+                    <button
+                      onClick={() => onDeleteCollection(c.id)}
+                      className="text-neutral-400 bg-white/90 backdrop-blur-sm rounded p-1 hover:text-red-500 transition-colors"
+                      title="Delete permanently"
+                    >
+                      <RiDeleteBinLine size={13} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

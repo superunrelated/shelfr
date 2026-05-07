@@ -56,6 +56,11 @@ const ShopsTab = lazy(() =>
 const ShareModal = lazy(() =>
   import('../components/ShareModal').then((m) => ({ default: m.ShareModal }))
 );
+const MoveToShelfModal = lazy(() =>
+  import('../components/MoveToShelfModal').then((m) => ({
+    default: m.MoveToShelfModal,
+  }))
+);
 
 const noop = () => undefined;
 
@@ -88,6 +93,7 @@ export function HomePage() {
     create: createProduct,
     update: updateProduct,
     remove: removeProduct,
+    move: moveProduct,
     clearError: clearProductsError,
   } = useProducts(activeColId, {
     onExternalChange: (event, product) => {
@@ -152,6 +158,7 @@ export function HomePage() {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     description: string;
@@ -310,9 +317,7 @@ export function HomePage() {
     setScrapePreview(null);
     if (activeCol) {
       navigate(
-        id
-          ? `/collections/${activeCol.slug}/${id}`
-          : `/collections/${activeCol.slug}`,
+        id ? `/shelfs/${activeCol.slug}/${id}` : `/shelfs/${activeCol.slug}`,
         {
           replace: true,
         }
@@ -329,7 +334,7 @@ export function HomePage() {
     setShowCompare(false);
     setTab('products');
     setSidebarOpen(false);
-    if (col) navigate(`/collections/${col.slug}`);
+    if (col) navigate(`/shelfs/${col.slug}`);
   }
 
   async function handleCreateCollection(name: string) {
@@ -338,7 +343,7 @@ export function HomePage() {
     const col = await createCollection(name, color);
     if (col) {
       setActiveColId(col.id);
-      navigate(`/collections/${col.slug}`);
+      navigate(`/shelfs/${col.slug}`);
     }
   }
 
@@ -514,6 +519,15 @@ export function HomePage() {
     }
   }
 
+  async function handleMoveProduct(targetCollectionId: string) {
+    if (!selected) return;
+    const targetCol = collections.find((c) => c.id === targetCollectionId);
+    setShowMoveModal(false);
+    await moveProduct(selected.id, targetCollectionId);
+    selectProduct(null);
+    toast(`Moved to "${targetCol?.name ?? 'shelf'}"`, 'success');
+  }
+
   function handleCardClick(e: React.MouseEvent, p: Product) {
     if (e.metaKey && p.source_url) {
       window.open(p.source_url, '_blank');
@@ -576,27 +590,18 @@ export function HomePage() {
         open={sidebarOpen}
         onNavigateHome={() => {
           setActiveColId(null);
-          navigate('/collections');
+          navigate('/shelfs');
           setSidebarOpen(false);
         }}
         onSwitchCollection={switchCollection}
         onCreateCollection={handleCreateCollection}
-        onDeleteCollection={(id) => {
-          setConfirmAction({
-            title: 'Delete this shelf?',
-            description:
-              'All products in this shelf will be permanently deleted.',
-            confirmLabel: 'Delete shelf',
-            variant: 'danger',
-            onConfirm: () => {
-              removeCollection(id);
-              if (activeColId === id) {
-                setActiveColId(null);
-                navigate('/collections');
-              }
-              setConfirmAction(null);
-            },
-          });
+        onArchiveCollection={(id) => {
+          archiveCollection(id, true);
+          if (activeColId === id) {
+            setActiveColId(null);
+            navigate('/shelfs');
+          }
+          toast('Shelf archived', 'info');
         }}
         onSignOut={signOut}
         onDeleteAccount={() => {
@@ -639,13 +644,26 @@ export function HomePage() {
             onArchiveCollection={(id, archived) =>
               archiveCollection(id, archived)
             }
+            onDeleteCollection={(id) => {
+              setConfirmAction({
+                title: 'Delete this shelf?',
+                description:
+                  'All products in this shelf will be permanently deleted. This cannot be undone.',
+                confirmLabel: 'Delete shelf',
+                variant: 'danger',
+                onConfirm: () => {
+                  removeCollection(id);
+                  setConfirmAction(null);
+                },
+              });
+            }}
             onAcceptInvite={async (memberId) => {
               const inv = invitations.find((i) => i.id === memberId);
               const col =
                 inv && collections.find((c) => c.id === inv.collection_id);
               await acceptInvite(memberId);
               if (col) {
-                await dismissByType('invite', `/collections/${col.slug}`);
+                await dismissByType('invite', `/shelfs/${col.slug}`);
               }
               await refetchCollections();
               toast('Invitation accepted', 'success');
@@ -660,7 +678,7 @@ export function HomePage() {
               }
               await declineInvite(memberId);
               if (col) {
-                await dismissByType('invite', `/collections/${col.slug}`);
+                await dismissByType('invite', `/shelfs/${col.slug}`);
               }
               await refetchCollections();
               toast('Invitation declined', 'info');
@@ -728,7 +746,7 @@ export function HomePage() {
                       .eq('user_id', user.id);
                     setActiveColId(null);
                     await refetchCollections();
-                    navigate('/collections');
+                    navigate('/shelfs');
                     toast('Left collection', 'info');
                     setConfirmAction(null);
                   },
@@ -928,6 +946,7 @@ export function HomePage() {
                         },
                       });
                     }}
+                    onMove={canEdit ? () => setShowMoveModal(true) : undefined}
                     onClose={() => selectProduct(null)}
                     onRescrape={handleRescrape}
                     rescraping={rescraping}
@@ -946,6 +965,18 @@ export function HomePage() {
                 onApply={applyScrapePreview}
                 onDismiss={() => setScrapePreview(null)}
               />
+            )}
+
+            {showMoveModal && selected && (
+              <Suspense fallback={null}>
+                <MoveToShelfModal
+                  collections={acceptedCollections.filter(
+                    (c) => c.id !== activeColId
+                  )}
+                  onMove={handleMoveProduct}
+                  onClose={() => setShowMoveModal(false)}
+                />
+              </Suspense>
             )}
 
             {confirmAction && (
