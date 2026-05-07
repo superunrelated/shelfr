@@ -328,7 +328,12 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     <div className="flex flex-col min-h-[420px]">
       {/* Header — dark sidebar style */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#1c1e2a]">
-        <div className="flex items-center gap-2">
+        <a
+          href="https://superunrelated.github.io/shelfr/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
           <div className="w-7 h-7 rounded bg-white/10 flex items-center justify-center">
             <svg
               viewBox="0 0 24 24"
@@ -343,7 +348,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
           >
             shelf<span className="text-amber-400">r</span>
           </span>
-        </div>
+        </a>
         <button
           onClick={onLogout}
           className="text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors"
@@ -431,14 +436,14 @@ export function MainView({ userId, onLogout }: MainViewProps) {
       <div className="px-4 py-3 flex-1">
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">
-            Save to collection
+            Save to shelf
           </label>
           <button
             type="button"
             onClick={handleOpenCollection}
             disabled={!selected}
-            aria-label="Open collection in new tab"
-            title="Open collection in new tab"
+            aria-label="Open shelf in new tab"
+            title="Open shelf in new tab"
             className="text-neutral-400 hover:text-neutral-600 disabled:opacity-30 disabled:hover:text-neutral-400 transition-colors"
           >
             <svg
@@ -458,7 +463,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
         </div>
         {loading && (
           <div className="text-xs text-neutral-400 py-2">
-            Loading collections...
+            Loading shelves...
           </div>
         )}
         {!loading && collections.length === 0 && (
@@ -467,7 +472,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
             onClick={() => setView('create')}
             className="w-full text-xs text-neutral-500 py-2.5 rounded border border-dashed border-neutral-300 hover:border-neutral-400 hover:text-neutral-700 transition-colors"
           >
-            + Create your first collection
+            + Create your first shelf
           </button>
         )}
         {!loading && collections.length > 0 && (

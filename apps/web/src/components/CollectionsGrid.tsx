@@ -48,7 +48,7 @@ export function CollectionsGrid({
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <PageHeader title="Collections" onOpenSidebar={onOpenSidebar}>
+      <PageHeader title="Shelves" onOpenSidebar={onOpenSidebar}>
         {archived.length > 0 && (
           <button
             onClick={() => setShowArchived(!showArchived)}
@@ -88,7 +88,7 @@ export function CollectionsGrid({
 
         {/* Active collections */}
         <section>
-          <SectionHeader label="My collections" count={owned.length} />
+          <SectionHeader label="My shelves" count={owned.length} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {owned.map((c) => (
               <CollectionCard
@@ -194,7 +194,7 @@ function NewCollectionCard({ onCreate }: { onCreate: (name: string) => void }) {
               if (e.key === 'Enter') handleSubmit();
               if (e.key === 'Escape') setEditing(false);
             }}
-            placeholder="Collection name"
+            placeholder="Shelf name"
             autoFocus
             className="text-xs px-3 py-2 border border-neutral-200 rounded bg-white focus:outline-none focus:border-neutral-400 transition-colors"
           />
@@ -233,7 +233,7 @@ function NewCollectionCard({ onCreate }: { onCreate: (name: string) => void }) {
       </div>
       <div className="p-4">
         <p className="text-[14px] font-semibold text-neutral-400 font-serif">
-          New collection
+          New shelf
         </p>
       </div>
     </button>

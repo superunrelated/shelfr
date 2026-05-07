@@ -515,7 +515,7 @@ export function HomePage() {
   }
 
   function handleCardClick(e: React.MouseEvent, p: Product) {
-    if (e.shiftKey && p.source_url) {
+    if (e.metaKey && p.source_url) {
       window.open(p.source_url, '_blank');
       return;
     }
@@ -583,10 +583,10 @@ export function HomePage() {
         onCreateCollection={handleCreateCollection}
         onDeleteCollection={(id) => {
           setConfirmAction({
-            title: 'Delete this collection?',
+            title: 'Delete this shelf?',
             description:
-              'All products in this collection will be permanently deleted.',
-            confirmLabel: 'Delete collection',
+              'All products in this shelf will be permanently deleted.',
+            confirmLabel: 'Delete shelf',
             variant: 'danger',
             onConfirm: () => {
               removeCollection(id);
