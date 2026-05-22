@@ -11,6 +11,11 @@ const AuthPage = lazy(() =>
 const HomePage = lazy(() =>
   import('../pages/Home').then((m) => ({ default: m.HomePage }))
 );
+const ShoppingListPage = lazy(() =>
+  import('../pages/ShoppingList').then((m) => ({
+    default: m.ShoppingListPage,
+  }))
+);
 const PrivacyPage = lazy(() =>
   import('../pages/Privacy').then((m) => ({ default: m.PrivacyPage }))
 );
@@ -89,6 +94,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shopping-list"
+          element={
+            <ProtectedRoute>
+              <ShoppingListPage />
             </ProtectedRoute>
           }
         />
