@@ -78,6 +78,7 @@ export function HomePage() {
     create: createCollection,
     remove: removeCollection,
     archive: archiveCollection,
+    rename: renameCollection,
     refetch: refetchCollections,
   } = useCollections();
   const {
@@ -716,6 +717,14 @@ export function HomePage() {
               compareMode={compareMode}
               compareCount={compareIds.size}
               onOpenSidebar={() => setSidebarOpen(true)}
+              onRename={
+                isOwner && activeColId
+                  ? (name) => {
+                      renameCollection(activeColId, name);
+                      toast('Shelf renamed', 'success');
+                    }
+                  : undefined
+              }
               onStartCompare={() => {
                 setCompareMode(true);
                 setSelectedId(null);

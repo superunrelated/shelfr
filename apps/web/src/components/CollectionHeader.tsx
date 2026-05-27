@@ -1,8 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   RiScalesLine,
   RiShareLine,
   RiEyeLine,
   RiLogoutBoxRLine,
+  RiPencilLine,
 } from '@remixicon/react';
 import { Button, PageHeader } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
@@ -20,6 +22,7 @@ interface CollectionHeaderProps {
   onCancelCompare: () => void;
   onShare: () => void;
   onLeave: () => void;
+  onRename?: (name: string) => void;
 }
 
 export function CollectionHeader({
@@ -35,9 +38,23 @@ export function CollectionHeader({
   onCancelCompare,
   onShare,
   onLeave,
+  onRename,
 }: CollectionHeaderProps) {
+  const canRename = isOwner && !!onRename && !compareMode;
   return (
-    <PageHeader title={collection.name} onOpenSidebar={onOpenSidebar}>
+    <PageHeader
+      title={
+        canRename ? (
+          <EditableTitle
+            value={collection.name}
+            onSave={(name) => onRename?.(name)}
+          />
+        ) : (
+          collection.name
+        )
+      }
+      onOpenSidebar={onOpenSidebar}
+    >
       {isViewer && (
         <span className="text-[11px] text-neutral-400 bg-neutral-100 px-2.5 py-1 rounded-full flex items-center gap-1">
           <RiEyeLine size={12} /> View only
@@ -81,5 +98,74 @@ export function CollectionHeader({
         </>
       )}
     </PageHeader>
+  );
+}
+
+function EditableTitle({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) onSave(trimmed);
+    else setDraft(value);
+    setEditing(false);
+  }
+
+  function cancel() {
+    setDraft(value);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          else if (e.key === 'Escape') cancel();
+        }}
+        className="w-full text-[18px] font-semibold text-white md:text-[#1c1e2a] tracking-tight font-serif bg-transparent outline-none border-b border-neutral-300 md:border-neutral-400 focus:border-[#1c1e2a]"
+        aria-label="Rename shelf"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      title="Rename shelf"
+      className="group flex items-center gap-2 max-w-full text-left"
+    >
+      <h1 className="text-[18px] font-semibold text-white md:text-[#1c1e2a] tracking-tight truncate font-serif">
+        {value}
+      </h1>
+      <RiPencilLine
+        size={14}
+        className="text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+      />
+    </button>
   );
 }

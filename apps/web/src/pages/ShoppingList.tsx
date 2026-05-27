@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RiShoppingCart2Line, RiImageLine, RiMenuLine } from '@remixicon/react';
+import {
+  RiShoppingCart2Line,
+  RiImageLine,
+  RiMenuLine,
+  RiCheckLine,
+} from '@remixicon/react';
 import { supabase } from '@shelfr/shared';
 import { EmptyState, TotalRow } from '@shelfr/ui';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +13,7 @@ import { useCollections } from '../hooks/useCollections';
 import { useCollectionMembers } from '../hooks/useCollectionMembers';
 import { useNotifications } from '../hooks/useNotifications';
 import { useShoppingList } from '../hooks/useShoppingList';
+import { useToast } from '../context/ToastContext';
 import { Sidebar } from '../components/Sidebar';
 import { NotificationBell } from '../components/NotificationBell';
 import { groupByShop } from '../utils/productSort';
@@ -16,7 +22,8 @@ export function ShoppingListPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { collections, archive: archiveCollection } = useCollections();
-  const { items, loading } = useShoppingList();
+  const { items, loading, markPurchased } = useShoppingList();
+  const { toast } = useToast();
   useCollectionMembers(null);
   const {
     notifications,
@@ -142,6 +149,10 @@ export function ShoppingListPage() {
                           onOpen={() =>
                             p.collection && goToProduct(p.collection.slug, p.id)
                           }
+                          onMarkBought={() => {
+                            markPurchased(p.id);
+                            toast(`Marked "${p.title}" as bought`, 'success');
+                          }}
                         />
                       ))}
                     </div>
@@ -175,9 +186,10 @@ interface ShoppingListRowProps {
     } | null;
   };
   onOpen: () => void;
+  onMarkBought: () => void;
 }
 
-function ShoppingListRow({ item, onOpen }: ShoppingListRowProps) {
+function ShoppingListRow({ item, onOpen, onMarkBought }: ShoppingListRowProps) {
   const qty = item.quantity || 1;
   return (
     <div
@@ -223,7 +235,7 @@ function ShoppingListRow({ item, onOpen }: ShoppingListRowProps) {
       <div className="w-12 flex-shrink-0 text-center">
         <span className="text-xs text-neutral-400">&times;{qty}</span>
       </div>
-      <div className="w-28 flex-shrink-0 text-right pr-4">
+      <div className="w-28 flex-shrink-0 text-right">
         <span className="text-[15px] font-semibold text-[#1c1e2a]">
           ${Number(item.price).toLocaleString()}
         </span>
@@ -233,6 +245,19 @@ function ShoppingListRow({ item, onOpen }: ShoppingListRowProps) {
           </p>
         )}
       </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onMarkBought();
+        }}
+        title="Mark as bought"
+        aria-label="Mark as bought"
+        className="mr-3 flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded border border-neutral-200 text-neutral-500 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+      >
+        <RiCheckLine size={14} />
+        Bought
+      </button>
     </div>
   );
 }
