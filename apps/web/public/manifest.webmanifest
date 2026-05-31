@@ -2,7 +2,7 @@
   "name": "Shelfr",
   "short_name": "Shelfr",
   "description": "Bookmark and compare products across stores",
-  "start_url": "/shelfr/collections",
+  "start_url": "/shelfr/",
   "scope": "/shelfr/",
   "display": "standalone",
   "theme_color": "#1c1e2a",
