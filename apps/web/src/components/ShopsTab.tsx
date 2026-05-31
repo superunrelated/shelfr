@@ -1,97 +1,119 @@
-import { RiStore2Line, RiExternalLinkLine } from '@remixicon/react';
-import type { Shop } from '@shelfr/shared';
+import { useMemo } from 'react';
+import type { Shop, Product } from '@shelfr/shared';
 import { ShopAddForm } from './ShopAddForm';
+import { ShopAccordion, type ShopAccordionItem } from './ShopAccordion';
 
 interface ShopWithCount extends Shop {
   _count: number;
 }
 
+interface CollectionInfo {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+}
+
+type ShopSortKey = 'name' | 'domain' | 'products';
+
 interface ShopsTabProps {
   shops: ShopWithCount[];
-  shopSortBy: 'name' | 'domain' | 'products';
-  onShopSortChange: (key: 'name' | 'domain' | 'products') => void;
+  products: Product[];
+  collection: CollectionInfo;
+  shopSortBy: ShopSortKey;
+  onShopSortChange: (key: ShopSortKey) => void;
   onAddShop: (name: string, url: string) => void;
+  expandedShopId: string | null;
+  onToggleShop: (id: string | null) => void;
+  onSelectProduct: (id: string) => void;
 }
+
+const SORT_OPTIONS: { key: ShopSortKey; label: string }[] = [
+  { key: 'name', label: 'Shop' },
+  { key: 'domain', label: 'Domain' },
+  { key: 'products', label: 'Products' },
+];
 
 export function ShopsTab({
   shops,
+  products,
+  collection,
   shopSortBy,
   onShopSortChange,
   onAddShop,
+  expandedShopId,
+  onToggleShop,
+  onSelectProduct,
 }: ShopsTabProps) {
+  const items: ShopAccordionItem[] = useMemo(() => {
+    return shops.map((s) => {
+      const domainLower = (s.domain || '').toLowerCase();
+      const shopProducts = products
+        .filter(
+          (p) =>
+            !p.archived && (p.shop_domain || '').toLowerCase() === domainLower
+        )
+        .sort((a, b) => a.title.localeCompare(b.title));
+      return {
+        key: s.id,
+        name: s.name,
+        domain: s.domain,
+        url: s.url,
+        productCount: s._count,
+        showShelfHeaders: false,
+        shelfGroups: [
+          {
+            collectionId: collection.id,
+            name: collection.name,
+            slug: collection.slug,
+            color: collection.color,
+            products: shopProducts.map((p) => ({
+              id: p.id,
+              title: p.title,
+              price: p.price,
+              image_url: p.image_url,
+            })),
+          },
+        ],
+      };
+    });
+  }, [shops, products, collection]);
+
   return (
     <div>
-      <p className="text-xs text-neutral-400 mb-5">
+      <p className="text-xs text-neutral-400 mb-4">
         Shops discovered for this collection. This list keeps growing even when
         products are removed.
       </p>
-      <div className="bg-white rounded shadow-sm overflow-hidden">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-neutral-100">
-              {[
-                { key: 'name' as const, label: 'Shop' },
-                { key: 'domain' as const, label: 'Domain' },
-                { key: 'products' as const, label: 'Products' },
-              ].map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => onShopSortChange(col.key)}
-                  className={`text-left py-3.5 px-5 text-[10px] font-medium uppercase tracking-wider cursor-pointer transition-colors ${shopSortBy === col.key ? 'text-[#1c1e2a]' : 'text-neutral-400 hover:text-neutral-600'}`}
-                >
-                  {col.label}
-                  {shopSortBy === col.key ? ' ↓' : ''}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {shops.map((s) => (
-              <tr
-                key={s.id}
-                className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50"
-              >
-                <td className="py-3.5 px-5 font-medium text-[#1c1e2a] flex items-center gap-2.5">
-                  <RiStore2Line size={15} className="text-neutral-400" />{' '}
-                  {s.name}
-                </td>
-                <td className="py-3.5 px-5">
-                  {s.domain ? (
-                    <a
-                      href={`https://${s.domain}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-neutral-400 hover:text-[#1c1e2a] flex items-center gap-1.5 group"
-                    >
-                      {s.domain}{' '}
-                      <RiExternalLinkLine
-                        size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      />
-                    </a>
-                  ) : (
-                    <span className="text-neutral-300">--</span>
-                  )}
-                </td>
-                <td className="py-3.5 px-5 text-neutral-500">
-                  {s._count === 0 && (
-                    <span className="text-neutral-300">--</span>
-                  )}
-                  {s._count === 1 && '1 product'}
-                  {s._count > 1 && `${s._count} products`}
-                </td>
-              </tr>
-            ))}
-            {shops.length === 0 && (
-              <tr>
-                <td colSpan={3} className="py-8 text-center text-neutral-400">
-                  No shops yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="flex items-center gap-2 mb-3 text-[10px] uppercase tracking-wider text-neutral-400">
+        <span>Sort by</span>
+        {SORT_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => onShopSortChange(opt.key)}
+            className={`px-2 py-1 rounded transition-colors ${
+              shopSortBy === opt.key
+                ? 'text-[#1c1e2a] bg-neutral-200/70'
+                : 'hover:text-neutral-600'
+            }`}
+          >
+            {opt.label}
+            {shopSortBy === opt.key ? ' ↓' : ''}
+          </button>
+        ))}
       </div>
+      <ShopAccordion
+        items={items}
+        expandedKey={expandedShopId}
+        onToggle={(k) => onToggleShop(expandedShopId === k ? null : k)}
+        onSelectProduct={(_slug, productId) => onSelectProduct(productId)}
+        emptyState={
+          <p className="text-xs text-neutral-400 py-6 text-center bg-white rounded shadow-sm">
+            No shops yet.
+          </p>
+        }
+      />
       <ShopAddForm onAdd={onAddShop} />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useProducts } from '../hooks/useProducts';
@@ -68,7 +68,13 @@ const noop = () => undefined;
 
 export function HomePage() {
   const { user, signOut } = useAuth();
-  const { slug: urlSlug, productId: urlProductId } = useParams();
+  const {
+    slug: urlSlug,
+    productId: urlProductId,
+    shopId: urlShopId,
+  } = useParams();
+  const location = useLocation();
+  const onShopsRoute = /\/shelfs\/[^/]+\/shops(\/|$)/.test(location.pathname);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -151,7 +157,12 @@ export function HomePage() {
 
   // UI state
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'products' | 'shops'>('products');
+  const [tab, setTab] = useState<'products' | 'shops'>(
+    onShopsRoute ? 'shops' : 'products'
+  );
+  const [expandedShopId, setExpandedShopId] = useState<string | null>(
+    urlShopId ?? null
+  );
   const [sortBy, setSortBy] = useState<SortKey>('rating');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('big');
@@ -305,6 +316,16 @@ export function HomePage() {
   }, [urlProductId]);
 
   useEffect(() => {
+    if (onShopsRoute && tab !== 'shops') setTab('shops');
+    if (!onShopsRoute && tab === 'shops' && urlSlug) setTab('products');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onShopsRoute]);
+
+  useEffect(() => {
+    setExpandedShopId(urlShopId ?? null);
+  }, [urlShopId]);
+
+  useEffect(() => {
     if (urlProductId && !selected && products.length > 0) {
       const p = products.find((p) => p.id === urlProductId);
       if (p) setSelectedId(p.id);
@@ -316,13 +337,35 @@ export function HomePage() {
   function selectProduct(id: string | null) {
     setSelectedId(id);
     setScrapePreview(null);
-    if (activeCol) {
-      navigate(
-        id ? `/shelfs/${activeCol.slug}/${id}` : `/shelfs/${activeCol.slug}`,
-        {
-          replace: true,
-        }
-      );
+    if (!activeCol) return;
+    const base = `/shelfs/${activeCol.slug}`;
+    let target: string;
+    if (tab === 'shops') {
+      const shopSegment = expandedShopId ? `/${expandedShopId}` : '';
+      const productSegment = id ? `/${id}` : '';
+      target = `${base}/shops${shopSegment}${productSegment}`;
+    } else {
+      target = id ? `${base}/${id}` : base;
+    }
+    navigate(target, { replace: true });
+  }
+
+  function selectShop(id: string | null) {
+    setExpandedShopId(id);
+    if (!activeCol) return;
+    const base = `/shelfs/${activeCol.slug}/shops`;
+    navigate(id ? `${base}/${id}` : base, { replace: true });
+  }
+
+  function changeTab(t: 'products' | 'shops') {
+    setTab(t);
+    if (t === 'shops') {
+      setSelectedId(null);
+      if (activeCol)
+        navigate(`/shelfs/${activeCol.slug}/shops`, { replace: true });
+    } else {
+      setExpandedShopId(null);
+      if (activeCol) navigate(`/shelfs/${activeCol.slug}`, { replace: true });
     }
   }
 
@@ -765,10 +808,7 @@ export function HomePage() {
 
             <CollectionToolbar
               tab={tab}
-              onTabChange={(t) => {
-                setTab(t);
-                if (t === 'shops') setSelectedId(null);
-              }}
+              onTabChange={changeTab}
               sortBy={sortBy}
               sortDir={sortDir}
               onSortClick={handleSortClick}
@@ -906,12 +946,24 @@ export function HomePage() {
                 {/* Shops tab */}
                 {tab === 'shops' && (
                   <Suspense fallback={null}>
-                    <ShopsTab
-                      shops={sortedShops}
-                      shopSortBy={shopSortBy}
-                      onShopSortChange={setShopSortBy}
-                      onAddShop={handleAddShop}
-                    />
+                    {activeCol && (
+                      <ShopsTab
+                        shops={sortedShops}
+                        products={products}
+                        collection={{
+                          id: activeCol.id,
+                          name: activeCol.name,
+                          slug: activeCol.slug,
+                          color: activeCol.color,
+                        }}
+                        shopSortBy={shopSortBy}
+                        onShopSortChange={setShopSortBy}
+                        onAddShop={handleAddShop}
+                        expandedShopId={expandedShopId}
+                        onToggleShop={selectShop}
+                        onSelectProduct={selectProduct}
+                      />
+                    )}
                   </Suspense>
                 )}
 

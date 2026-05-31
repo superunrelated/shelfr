@@ -16,6 +16,9 @@ const ShoppingListPage = lazy(() =>
     default: m.ShoppingListPage,
   }))
 );
+const ShopsPage = lazy(() =>
+  import('../pages/Shops').then((m) => ({ default: m.ShopsPage }))
+);
 const PrivacyPage = lazy(() =>
   import('../pages/Privacy').then((m) => ({ default: m.PrivacyPage }))
 );
@@ -90,6 +93,30 @@ export default function App() {
           }
         />
         <Route
+          path="/shelfs/:slug/shops"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shelfs/:slug/shops/:shopId"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shelfs/:slug/shops/:shopId/:productId"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/shelfs/:slug/:productId"
           element={
             <ProtectedRoute>
@@ -102,6 +129,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ShoppingListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shops"
+          element={
+            <ProtectedRoute>
+              <ShopsPage />
             </ProtectedRoute>
           }
         />
