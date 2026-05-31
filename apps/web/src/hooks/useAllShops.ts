@@ -84,7 +84,8 @@ export function useAllShops() {
 
     for (const s of shopRows) {
       const k = keyFor(s.domain, s.name);
-      if (!map.has(k)) {
+      const existing = map.get(k);
+      if (!existing) {
         map.set(k, {
           key: k,
           name: s.name || s.domain || 'Other',
@@ -96,7 +97,6 @@ export function useAllShops() {
           fromShopsTable: true,
         });
       } else {
-        const existing = map.get(k)!;
         existing.fromShopsTable = true;
         if (!existing.url && s.url) existing.url = s.url;
       }
@@ -118,16 +118,15 @@ export function useAllShops() {
         };
         map.set(k, shop);
       }
-      if (!p.collection) continue;
-      let group = shop.shelfGroups.find(
-        (g) => g.collectionId === p.collection!.id
-      );
+      const col = p.collection;
+      if (!col) continue;
+      let group = shop.shelfGroups.find((g) => g.collectionId === col.id);
       if (!group) {
         group = {
-          collectionId: p.collection.id,
-          name: p.collection.name,
-          slug: p.collection.slug,
-          color: p.collection.color,
+          collectionId: col.id,
+          name: col.name,
+          slug: col.slug,
+          color: col.color,
           products: [],
         };
         shop.shelfGroups.push(group);

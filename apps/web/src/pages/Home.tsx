@@ -361,8 +361,9 @@ export function HomePage() {
     setTab(t);
     if (t === 'shops') {
       setSelectedId(null);
-      if (activeCol)
+      if (activeCol) {
         navigate(`/shelfs/${activeCol.slug}/shops`, { replace: true });
+      }
     } else {
       setExpandedShopId(null);
       if (activeCol) navigate(`/shelfs/${activeCol.slug}`, { replace: true });

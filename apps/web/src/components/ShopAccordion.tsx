@@ -46,9 +46,9 @@ export function ShopAccordion({
   onToggle,
   onSelectProduct,
   emptyState,
-}: ShopAccordionProps) {
+}: ShopAccordionProps): React.ReactNode {
   if (items.length === 0) {
-    return emptyState ? emptyState : null;
+    return emptyState ?? null;
   }
   return (
     <div className="flex flex-col gap-2">
