@@ -347,6 +347,38 @@ function getImageCandidates(imgUrl: string, pageUrl: string): string[] {
   return candidates.filter((c) => !isUnsafeUrl(c));
 }
 
+const MAX_REDIRECTS = 5;
+
+// Follow redirects manually, re-validating every hop against isUnsafeUrl so a
+// public URL can't 3xx its way to an internal/metadata address after the
+// initial check passed.
+async function fetchWithSafeRedirects(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal
+): Promise<Response> {
+  let currentUrl = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const unsafe = isUnsafeUrl(currentUrl);
+    if (unsafe) {
+      throw new Error(`Blocked redirect to unsafe URL: ${unsafe}`);
+    }
+    const resp = await fetch(currentUrl, {
+      ...init,
+      redirect: 'manual',
+      signal,
+    });
+    if (resp.status >= 300 && resp.status < 400) {
+      const location = resp.headers.get('location');
+      if (!location) return resp;
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+    return resp;
+  }
+  throw new Error('Too many redirects');
+}
+
 async function tryFetchImage(
   imgUrl: string,
   referer: string
@@ -361,16 +393,18 @@ async function tryFetchImage(
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
-    const resp = await fetch(imgUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'image/*',
-        Referer: referer,
+    const resp = await fetchWithSafeRedirects(
+      imgUrl,
+      {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Accept: 'image/*',
+          Referer: referer,
+        },
       },
-      redirect: 'follow',
-      signal: ctrl.signal,
-    });
+      ctrl.signal
+    );
     clearTimeout(t);
     if (resp.ok && resp.headers.get('content-type')?.startsWith('image')) {
       return resp;
@@ -510,30 +544,32 @@ async function fetchPage(url: string): Promise<Response> {
   // Approximate a real Chrome navigation. Many retail sites reject requests
   // whose header signature does not look like a browser (missing sec-ch-ua,
   // wrong Accept-Encoding, no Referer).
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      Accept:
-        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'en-NZ,en-US;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Cache-Control': 'max-age=0',
-      'Upgrade-Insecure-Requests': '1',
-      DNT: '1',
-      Referer: 'https://www.google.com/',
-      'sec-ch-ua':
-        '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-      'sec-ch-ua-mobile': '?0',
-      'sec-ch-ua-platform': '"macOS"',
-      'sec-fetch-dest': 'document',
-      'sec-fetch-mode': 'navigate',
-      'sec-fetch-site': 'cross-site',
-      'sec-fetch-user': '?1',
+  const response = await fetchWithSafeRedirects(
+    url,
+    {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-NZ,en-US;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'max-age=0',
+        'Upgrade-Insecure-Requests': '1',
+        DNT: '1',
+        Referer: 'https://www.google.com/',
+        'sec-ch-ua':
+          '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'cross-site',
+        'sec-fetch-user': '?1',
+      },
     },
-    redirect: 'follow',
-    signal: controller.signal,
-  });
+    controller.signal
+  );
   clearTimeout(timeout);
   return response;
 }
