@@ -6,6 +6,8 @@ module.exports = {
     join(__dirname, 'apps/web/src/**/*.{ts,tsx,html}'),
     join(__dirname, 'apps/extension/src/**/*.{ts,tsx,html}'),
     join(__dirname, 'apps/extension/popup.html'),
+    join(__dirname, 'apps/presentation/src/**/*.{ts,tsx,html}'),
+    join(__dirname, 'apps/presentation/index.html'),
     join(__dirname, 'libs/ui/src/**/*.{ts,tsx,html}'),
   ],
   theme: {

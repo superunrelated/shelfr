@@ -10,6 +10,8 @@
     "zip:extension": "nx build extension && cd dist/extension && zip -r ../shelfr-extension.zip . && echo 'Created dist/shelfr-extension.zip'",
     "dev:extension": "nx dev extension",
     "dev:mock": "npx serve apps/extension/store -p 4300",
+    "presentation": "nx serve presentation",
+    "build:presentation": "nx build presentation",
     "screenshot:store": "node apps/extension/store/capture.mjs",
     "dev": "nx serve web",
     "db:push": "npx supabase db push",
