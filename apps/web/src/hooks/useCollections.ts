@@ -80,6 +80,22 @@ export function useCollections() {
     }
   }
 
+  async function rename(id: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCollections((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name: trimmed } : c))
+    );
+    const { error: err } = await supabase
+      .from('collections')
+      .update({ name: trimmed })
+      .eq('id', id);
+    if (err) {
+      setError(err.message);
+      fetch();
+    }
+  }
+
   function clearError() {
     setError(null);
   }
@@ -91,6 +107,7 @@ export function useCollections() {
     create,
     remove,
     archive,
+    rename,
     refetch: fetch,
     clearError,
   };

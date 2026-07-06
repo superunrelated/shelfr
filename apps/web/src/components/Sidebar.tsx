@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import {
   RiAddLine,
   RiLogoutBoxRLine,
   RiArchiveLine,
   RiGroupLine,
   RiChromeLine,
+  RiShoppingCart2Line,
+  RiStore2Line,
 } from '@remixicon/react';
 import { Button, Logo, Avatar } from '@shelfr/ui';
 import type { Collection } from '@shelfr/shared';
@@ -58,10 +60,14 @@ export function Sidebar({
       'chrome-extension://aacpljgijhpobmfdjbhdipjjjakndaod/icons/icon-16.png';
   }, [isChrome]);
 
-  const owned = collections.filter(
-    (c) => c.user_id === currentUserId && !c.archived
-  );
-  const shared = collections.filter((c) => c.user_id !== currentUserId);
+  const byName = (a: Collection, b: Collection) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  const owned = collections
+    .filter((c) => c.user_id === currentUserId && !c.archived)
+    .sort(byName);
+  const shared = collections
+    .filter((c) => c.user_id !== currentUserId)
+    .sort(byName);
 
   function handleCreate() {
     if (!newColName.trim()) return;
@@ -86,6 +92,35 @@ export function Sidebar({
         </button>
 
         <nav className="flex-1 py-2 overflow-y-auto">
+          <NavLink
+            to="/shopping-list"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-6 py-2 text-[13px] transition-all duration-150 ${
+                isActive
+                  ? 'text-white bg-white/8'
+                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'
+              }`
+            }
+          >
+            <RiShoppingCart2Line size={14} className="flex-shrink-0" />
+            <span className="flex-1">Shopping list</span>
+          </NavLink>
+          <NavLink
+            to="/shops"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-6 py-2 text-[13px] transition-all duration-150 ${
+                isActive
+                  ? 'text-white bg-white/8'
+                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'
+              }`
+            }
+          >
+            <RiStore2Line size={14} className="flex-shrink-0" />
+            <span className="flex-1">Shops</span>
+          </NavLink>
+          <div className="h-px bg-neutral-700/60 mx-6 my-3" />
           <button
             onClick={onNavigateHome}
             className="px-6 pb-3 text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium hover:text-neutral-300 transition-colors"

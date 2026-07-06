@@ -1,7 +1,7 @@
 import { RiMenuLine } from '@remixicon/react';
 
 interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   onOpenSidebar: () => void;
   children?: React.ReactNode;
 }
@@ -20,9 +20,13 @@ export function PageHeader({
       >
         <RiMenuLine size={20} />
       </button>
-      <h1 className="flex-1 text-[18px] font-semibold text-white md:text-[#1c1e2a] tracking-tight truncate font-serif">
-        {title}
-      </h1>
+      {typeof title === 'string' ? (
+        <h1 className="flex-1 text-[18px] font-semibold text-white md:text-[#1c1e2a] tracking-tight truncate font-serif">
+          {title}
+        </h1>
+      ) : (
+        <div className="flex-1 min-w-0">{title}</div>
+      )}
       {children}
     </header>
   );

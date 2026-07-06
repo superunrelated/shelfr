@@ -88,16 +88,19 @@ export function MainView({ userId, onLogout }: MainViewProps) {
     fetchCollections();
   }, [fetchCollections]);
 
+  const activeCollections = collections.filter((c) => !c.archived);
+
   useEffect(() => {
-    const first = collections[0];
+    const first = activeCollections[0];
     if (!first) return;
     getSelectedCollection().then((savedId) => {
-      if (savedId && collections.some((c) => c.id === savedId)) {
+      if (savedId && activeCollections.some((c) => c.id === savedId)) {
         setSelectedId(savedId);
       } else {
         setSelectedId(first.id);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collections]);
 
   useEffect(() => {
@@ -466,7 +469,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
             Loading shelves...
           </div>
         )}
-        {!loading && collections.length === 0 && (
+        {!loading && activeCollections.length === 0 && (
           <button
             type="button"
             onClick={() => setView('create')}
@@ -475,7 +478,7 @@ export function MainView({ userId, onLogout }: MainViewProps) {
             + Create your first shelf
           </button>
         )}
-        {!loading && collections.length > 0 && (
+        {!loading && activeCollections.length > 0 && (
           <div className="flex items-stretch gap-1.5">
             <div className="relative flex-1 min-w-0">
               <select
@@ -484,11 +487,17 @@ export function MainView({ userId, onLogout }: MainViewProps) {
                 className="w-full appearance-none text-xs px-3.5 py-2.5 pr-8 rounded border border-neutral-200 bg-white
                            focus:outline-none focus:border-neutral-400 transition-colors cursor-pointer"
               >
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {[...activeCollections]
+                  .sort((a, b) =>
+                    a.name.localeCompare(b.name, undefined, {
+                      sensitivity: 'base',
+                    })
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                 <svg

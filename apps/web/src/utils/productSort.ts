@@ -60,3 +60,25 @@ export function groupByStatus(products: Product[], dir: SortDir) {
     .filter((g) => g.items.length > 0);
   return dir === 'asc' ? groups.reverse() : groups;
 }
+
+export interface ShopGroup<T extends Product = Product> {
+  domain: string;
+  name: string;
+  items: T[];
+}
+
+export function groupByShop<T extends Product>(
+  products: T[],
+  dir: SortDir
+): ShopGroup<T>[] {
+  const map = new Map<string, ShopGroup<T>>();
+  for (const p of products) {
+    const domain = p.shop_domain || p.shop_name || 'Other';
+    const name = p.shop_name || p.shop_domain || 'Other';
+    const existing = map.get(domain);
+    if (existing) existing.items.push(p);
+    else map.set(domain, { domain, name, items: [p] });
+  }
+  const groups = [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return dir === 'asc' ? groups : groups.reverse();
+}

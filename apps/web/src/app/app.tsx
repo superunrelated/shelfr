@@ -11,6 +11,14 @@ const AuthPage = lazy(() =>
 const HomePage = lazy(() =>
   import('../pages/Home').then((m) => ({ default: m.HomePage }))
 );
+const ShoppingListPage = lazy(() =>
+  import('../pages/ShoppingList').then((m) => ({
+    default: m.ShoppingListPage,
+  }))
+);
+const ShopsPage = lazy(() =>
+  import('../pages/Shops').then((m) => ({ default: m.ShopsPage }))
+);
 const PrivacyPage = lazy(() =>
   import('../pages/Privacy').then((m) => ({ default: m.PrivacyPage }))
 );
@@ -85,6 +93,30 @@ export default function App() {
           }
         />
         <Route
+          path="/shelfs/:slug/shops"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shelfs/:slug/shops/:shopId"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shelfs/:slug/shops/:shopId/:productId"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/shelfs/:slug/:productId"
           element={
             <ProtectedRoute>
@@ -92,6 +124,23 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/shopping-list"
+          element={
+            <ProtectedRoute>
+              <ShoppingListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shops"
+          element={
+            <ProtectedRoute>
+              <ShopsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

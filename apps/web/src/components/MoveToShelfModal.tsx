@@ -42,22 +42,26 @@ export function MoveToShelfModal({
           </p>
         ) : (
           <ul className="overflow-y-auto">
-            {collections.map((col) => (
-              <li key={col.id}>
-                <button
-                  onClick={() => onMove(col.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 transition-colors"
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: col.color }}
-                  />
-                  <span className="text-sm text-[#1c1e2a] truncate">
-                    {col.name}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {[...collections]
+              .sort((a, b) =>
+                a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+              )
+              .map((col) => (
+                <li key={col.id}>
+                  <button
+                    onClick={() => onMove(col.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 transition-colors"
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: col.color }}
+                    />
+                    <span className="text-sm text-[#1c1e2a] truncate">
+                      {col.name}
+                    </span>
+                  </button>
+                </li>
+              ))}
           </ul>
         )}
       </div>
